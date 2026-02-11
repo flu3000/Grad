@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, Alert, Platform } from 'react-native';
+import { ActivityIndicator, Alert } from 'react-native';
 import * as Location from 'expo-location';
 import MapView, { Region } from 'react-native-maps';
 import * as S from './styles';
@@ -21,18 +21,25 @@ const MapScreen = () => {
         return;
       }
 
-      const location = await Location.getCurrentPositionAsync({
-        accuracy: Location.Accuracy.High,
-      });
+      try {
+        const location = await Location.getCurrentPositionAsync({
+          accuracy: Location.Accuracy.Balanced,
+        });
 
-      setRegion({
-        latitude: location.coords.latitude,
-        longitude: location.coords.longitude,
-        latitudeDelta: 0.015,
-        longitudeDelta: 0.015,
-      });
-
-      setLoading(false);
+        setRegion({
+          latitude: location.coords.latitude,
+          longitude: location.coords.longitude,
+          latitudeDelta: 0.015,
+          longitudeDelta: 0.015,
+        });
+      } catch {
+        Alert.alert(
+          'Erro',
+          'Não foi possível obter sua localização.'
+        );
+      } finally {
+        setLoading(false);
+      }
     })();
   }, []);
 
@@ -52,7 +59,7 @@ const MapScreen = () => {
     <S.Container>
       <MapView
         style={{ flex: 1 }}
-        initialRegion={region}
+        region={region}
         showsUserLocation
         showsMyLocationButton
       />
