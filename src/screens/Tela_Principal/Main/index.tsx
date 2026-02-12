@@ -3,8 +3,11 @@ import { ActivityIndicator, Alert } from 'react-native';
 import * as Location from 'expo-location';
 import MapView, { Region } from 'react-native-maps';
 import * as S from './styles';
+import Bottom_Navigation_Bar from '../../../components/Tela_Principal/Bottom_Navigation_Bar';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 const MapScreen = () => {
+  const insets = useSafeAreaInsets();
   const [region, setRegion] = useState<Region | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -62,7 +65,14 @@ const MapScreen = () => {
         region={region}
         showsUserLocation
         showsMyLocationButton
+        mapPadding={{
+          top: insets.bottom,
+          right: insets.bottom,
+          left: insets.bottom,
+          bottom: -insets.bottom, // altura da sua bottom nav
+        }}
       />
+      <Bottom_Navigation_Bar />
     </S.Container>
   );
 };

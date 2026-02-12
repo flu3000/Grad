@@ -18,7 +18,7 @@ const colors = {
   card: '#F5F1E6',          // Sand / bege claro - cards, contêineres
   accent: '#3B82F6',        // Azul mais claro - destaques, links sutis
   border: '#334155',        // Cinza azulado - bordas discretas
-  textPrimary: '#cea273',   // Texto principal bege
+  textPrimary: '#e7d5a1',   // Texto principal bege
   textSecondary: '#CBD5E1', // Texto secundário cinza-azulado
 
   // Opcional para sombras ou pequenos efeitos
