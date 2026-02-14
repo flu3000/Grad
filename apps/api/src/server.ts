@@ -1,16 +1,15 @@
 import app from './app';
-import mongoose from 'mongoose';
 import 'dotenv/config';
+import { connectDB } from './database';
 
-const PORT = 3333;
+const PORT = process.env.PORT || 3333;
 
-mongoose.connect(process.env.MONGO_URI!)
-  .then(() => {
-    console.log('MongoDB conectado');
-    app.listen(PORT, () =>
-      console.log(`Servidor rodando na porta ${PORT}`)
-    );
-  })
-  .catch(err => {
-    console.error('Erro ao conectar no Mongo', err);
+async function start() {
+  await connectDB();
+
+  app.listen(PORT, () => {
+    console.log(`Servidor rodando na porta ${PORT}`);
   });
+}
+
+start();
