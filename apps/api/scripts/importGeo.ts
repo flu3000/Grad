@@ -82,6 +82,7 @@ async function run() {
 
   await importSubprefectures();
   await importDistricts();
+  // falta importar os dados dos bairros do rio
 
   console.log('\n🎉 BANCO GEOESPACIAL PRONTO!');
   process.exit();
