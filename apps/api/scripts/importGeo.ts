@@ -1,3 +1,5 @@
+import dotenv from "dotenv";
+dotenv.config();
 import mongoose from 'mongoose';
 import fs from 'fs';
 import path from 'path';
@@ -5,9 +7,6 @@ import { Subprefecture } from '../src/models/Subprefecture';
 import { Neighborhood } from '../src/models/Neighborhood';
 import { convertGeometry } from '../src/utils/convertCoordinates';
 import { fixGeometry } from '../src/utils/fixGeometry';
-
-
-const MONGO_URL = 'mongodb://127.0.0.1:27017/grad';
 
 async function importSubprefectures() {
   console.log('--- Importando SUBPREFEITURAS ---');
@@ -75,7 +74,7 @@ async function importDistricts() {
 }
 
 async function run() {
-  await mongoose.connect(MONGO_URL);
+  await mongoose.connect(process.env.MONGO_URI!);
 
   console.log('\nLimpando banco...');
   await Subprefecture.deleteMany({});

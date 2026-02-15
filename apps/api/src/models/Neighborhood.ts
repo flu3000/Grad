@@ -1,4 +1,5 @@
 import { Schema, model, Types, HydratedDocument } from 'mongoose';
+import { Subprefecture } from './Subprefecture';
 
 /**
  * Tipos GeoJSON corretos
@@ -21,7 +22,7 @@ export interface INeighborhood {
 
   riskLevel?: number | null;
 
-  subprefecture: Types.ObjectId; // agora obrigatório
+  subprefecture: Types.ObjectId | typeof Subprefecture;
 }
 
 

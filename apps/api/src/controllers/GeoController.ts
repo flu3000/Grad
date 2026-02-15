@@ -1,5 +1,6 @@
 import { Request, Response } from "express";
 import { Neighborhood } from "../models/Neighborhood";
+import { Subprefecture } from "../models/Subprefecture";
 
 export async function locatePoint(req: Request, res: Response) {
   try {
@@ -9,25 +10,26 @@ export async function locatePoint(req: Request, res: Response) {
       return res.status(400).json({ error: "Lat/Lng obrigatórios" });
 
     const neighborhood = await Neighborhood.findOne({
-      geometry: {
-        $geoIntersects: {
-          $geometry: {
-            type: "Point",
-            coordinates: [lng, lat]
-          }
+        geometry: {
+            $geoIntersects: {
+            $geometry: {
+                type: "Point",
+                coordinates: [lng, lat]
+            }
+            }
         }
-      }
-    }).populate("subprefecture");
+        }).populate<{ subprefecture: typeof Subprefecture }>("subprefecture");
 
-    if (!neighborhood)
-      return res.status(404).json({ error: "Local não encontrado em SP" });
+        if (!neighborhood) {
+        return res.status(404).json({ error: "Local não encontrado" });
+        }
 
-    return res.json({
-      district: neighborhood.name,
-      subprefecture: neighborhood.subprefecture.type.name,
-      city: neighborhood.city,
-      state: neighborhood.state
-    });
+        return res.json({
+        district: neighborhood.name,
+        subprefecture: neighborhood.subprefecture.name,
+        city: neighborhood.city,
+        state: neighborhood.state
+        });
 
   } catch (err) {
     res.status(500).json({ error: "Erro interno" });

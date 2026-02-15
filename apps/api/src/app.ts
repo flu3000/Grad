@@ -10,9 +10,11 @@ app.get('/health', (_, res) => {
 
 import authRoutes from './routes/auth.routes';
 import neighborhoodsRoutes from './routes/neighborhoods.routes';
+import geoRoutes from "./routes/geo.routes";
 
 app.use('/auth', authRoutes);
 app.use('/neighborhoods', neighborhoodsRoutes);
+app.use("/geo", geoRoutes);
 
 
 export default app;
