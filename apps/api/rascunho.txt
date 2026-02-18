@@ -1,0 +1,35 @@
+Rascunho simples das rotas da API:
+
+Auth:
+|
+|----- Cadastro
+|
+|----- Login
+|
+|----- Logout
+|
+|----- Apagar conta
+|
+|----- Recarregar token
+|
+|
+
+Neighborhoods:
+|
+|
+|
+|
+|
+|
+|
+|
+
+Geo:
+|
+|
+|
+|
+|
+|
+|
+
