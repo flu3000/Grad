@@ -1,0 +1,43 @@
+Rascunho das rotas da API:
+
+Auth:
+|
+|--- Cadastro
+|    |
+|    |--- Criar usuário - POST
+|    |
+|    |--- Verificar email - POST
+|    |
+|    |--- Reenviar Verificação - POST
+|    |
+|    |--- Deletar usuário - DELETE
+
+|----- Login
+|
+|----- Logout
+|
+|----- Apagar conta
+|
+|----- Recarregar token
+|
+|
+
+Neighborhoods:
+|
+|
+|
+|
+|
+|
+|
+|
+
+Geo:
+|
+|
+|
+|
+|
+|
+|
+
