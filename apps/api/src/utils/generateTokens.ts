@@ -1,6 +1,11 @@
 import jwt from 'jsonwebtoken';
 
-export function generateTokens(userId: string) {
+interface Tokens {
+  accessToken: string;
+  refreshToken: string;
+}
+
+export function generateTokens(userId: string): Tokens {
   const accessToken = jwt.sign(
     { sub: userId },
     process.env.JWT_SECRET!,

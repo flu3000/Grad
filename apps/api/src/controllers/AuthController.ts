@@ -1,67 +1,116 @@
-import { Request, Response } from 'express';
-import bcrypt from 'bcryptjs';
-import jwt from 'jsonwebtoken';
-import { User } from '../models/User';
-import { generateTokens } from '../utils/generateTokens';
+import { Request, Response } from "express";
+import jwt from "jsonwebtoken";
+import { OAuth2Client } from "google-auth-library";
+import { jwtVerify, createRemoteJWKSet } from "jose";
+import { v4 as uuid } from "uuid";
+import { User } from "../models/User";
+import { generateTokens } from "../utils/generateTokens";
+
+// ===== Clients =====
+const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
+
+const appleJWKS = createRemoteJWKSet(
+  new URL("https://appleid.apple.com/auth/keys")
+);
 
 export class AuthController {
 
   // ======================
-  // REGISTER
+  // ANONYMOUS LOGIN
   // ======================
-  static async register(req: Request, res: Response) {
-    const { name, email, password } = req.body;
-
-    const userExists = await User.findOne({ email });
-    if (userExists) {
-      return res.status(400).json({ message: 'Usuário já existe' });
-    }
-
-    const hashedPassword = await bcrypt.hash(password, 10);
+  static async anonymous(req: Request, res: Response) {
+    const anonId = "anon_" + uuid();
 
     const user = await User.create({
-      name,
-      email,
-      password: hashedPassword
+      provider: "anonymous",
+      providerId: anonId,
+      name: "Guest"
     });
 
-    return res.status(201).json({
-      id: user.id,
-      name: user.name,
-      email: user.email
-    });
+    const tokens = generateTokens(user.id);
+
+    user.refreshToken = tokens.refreshToken;
+    await user.save();
+
+    return res.json({ ...tokens, user });
   }
 
   // ======================
-  // LOGIN
+  // GOOGLE LOGIN
   // ======================
-  static async login(req: Request, res: Response) {
-    const { email, password } = req.body;
+  static async google(req: Request, res: Response) {
+    const { idToken } = req.body;
 
-    const user = await User.findOne({ email });
+    const ticket = await googleClient.verifyIdToken({
+      idToken,
+      audience: process.env.GOOGLE_CLIENT_ID
+    });
+
+    const payload = ticket.getPayload();
+    if (!payload) return res.status(401).json({ message: "Token inválido" });
+
+    const { sub, email, name, picture } = payload;
+
+    let user = await User.findOne({
+      provider: "google",
+      providerId: sub
+    });
+
     if (!user) {
-      return res.status(401).json({ message: 'Credenciais inválidas' });
+      user = await User.create({
+        provider: "google",
+        providerId: sub,
+        email,
+        name,
+        avatar: picture
+      });
     }
 
-    const validPassword = await bcrypt.compare(password, user.password);
-    if (!validPassword) {
-      return res.status(401).json({ message: 'Credenciais inválidas' });
-    }
-
-    const { accessToken, refreshToken } = generateTokens(user.id);
-
-    user.refreshToken = refreshToken;
+    const tokens = generateTokens(user.id);
+    user.refreshToken = tokens.refreshToken;
     await user.save();
 
-    return res.json({
-      accessToken,
-      refreshToken,
-      user: {
-        id: user.id,
-        name: user.name,
-        email: user.email
+    return res.json({ ...tokens, user });
+  }
+
+  // ======================
+  // APPLE LOGIN
+  // ======================
+  static async apple(req: Request, res: Response) {
+    const { idToken } = req.body;
+
+    try {
+      const { payload } = await jwtVerify(idToken, appleJWKS, {
+        issuer: "https://appleid.apple.com",
+        audience: process.env.APPLE_CLIENT_ID
+      });
+
+      const sub = payload.sub as string;
+      const email = payload.email as string | undefined;
+
+      let user = await User.findOne({
+        provider: "apple",
+        providerId: sub
+      });
+
+      if (!user) {
+        user = await User.create({
+          provider: "apple",
+          providerId: sub,
+          email,
+          name: "Apple User"
+        });
       }
-    });
+
+      const tokens = generateTokens(user.id);
+      user.refreshToken = tokens.refreshToken;
+      await user.save();
+
+      return res.json({ ...tokens, user });
+
+    } catch {
+      return res.status(401).json({ message: "Apple token inválido" });
+    }
   }
 
   // ======================
@@ -70,9 +119,8 @@ export class AuthController {
   static async refresh(req: Request, res: Response) {
     const { refreshToken } = req.body;
 
-    if (!refreshToken) {
-      return res.status(401).json({ message: 'Refresh token ausente' });
-    }
+    if (!refreshToken)
+      return res.status(401).json({ message: "Refresh token ausente" });
 
     try {
       const payload = jwt.verify(
@@ -82,9 +130,8 @@ export class AuthController {
 
       const user = await User.findById(payload.sub);
 
-      if (!user || user.refreshToken !== refreshToken) {
-        return res.status(403).json({ message: 'Refresh token inválido' });
-      }
+      if (!user || user.refreshToken !== refreshToken)
+        return res.status(403).json({ message: "Refresh inválido" });
 
       const tokens = generateTokens(user.id);
 
@@ -93,7 +140,7 @@ export class AuthController {
 
       return res.json(tokens);
     } catch {
-      return res.status(403).json({ message: 'Refresh token expirado ou inválido' });
+      return res.status(403).json({ message: "Refresh expirado" });
     }
   }
 
@@ -101,12 +148,105 @@ export class AuthController {
   // LOGOUT
   // ======================
   static async logout(req: Request, res: Response) {
-    const userId = req.userId; // vem do middleware JWT
+    const userId = req.userId;
 
-    await User.findByIdAndUpdate(userId, {
-      refreshToken: null
-    });
+    await User.findByIdAndUpdate(userId, { refreshToken: null });
 
     return res.status(204).send();
   }
+
+  static async linkGoogle(req: Request, res: Response) {
+    const { idToken } = req.body;
+    const currentUserId = req.userId;
+
+    if (!currentUserId)
+      return res.status(401).json({ message: "Não autenticado" });
+
+    const ticket = await googleClient.verifyIdToken({
+      idToken,
+      audience: process.env.GOOGLE_CLIENT_ID
+    });
+
+    const payload = ticket.getPayload();
+    if (!payload) return res.status(401).json({ message: "Token inválido" });
+
+    const { sub, email, name, picture } = payload;
+
+    // verifica se já existe conta Google
+    const existingGoogleUser = await User.findOne({
+      provider: "google",
+      providerId: sub
+    });
+
+    if (existingGoogleUser)
+      return res.status(409).json({
+        message: "Esta conta Google já está vinculada a outro usuário"
+      });
+
+    // pega usuário atual (anônimo)
+    const user = await User.findById(currentUserId);
+    if (!user) return res.status(404).json({ message: "Usuário não encontrado" });
+
+    // converte conta
+    user.provider = "google";
+    user.providerId = sub;
+    user.email = email ?? user.email;
+    user.name = name ?? user.name;
+    user.avatar = picture ?? user.avatar;
+
+    await user.save();
+
+    const tokens = generateTokens(user.id);
+    user.refreshToken = tokens.refreshToken;
+    await user.save();
+
+    return res.json({ ...tokens, user });
+  }
+
+  static async linkApple(req: Request, res: Response) {
+    const { idToken } = req.body;
+    const currentUserId = req.userId;
+
+    if (!currentUserId)
+      return res.status(401).json({ message: "Não autenticado" });
+
+    try {
+      const { payload } = await jwtVerify(idToken, appleJWKS, {
+        issuer: "https://appleid.apple.com",
+        audience: process.env.APPLE_CLIENT_ID
+      });
+
+      const sub = payload.sub as string;
+      const email = payload.email as string | undefined;
+
+      const existingAppleUser = await User.findOne({
+        provider: "apple",
+        providerId: sub
+      });
+
+      if (existingAppleUser)
+        return res.status(409).json({
+          message: "Esta conta Apple já está vinculada a outro usuário"
+        });
+
+      const user = await User.findById(currentUserId);
+      if (!user) return res.status(404).json({ message: "Usuário não encontrado" });
+
+      user.provider = "apple";
+      user.providerId = sub;
+      user.email = email ?? user.email;
+
+      await user.save();
+
+      const tokens = generateTokens(user.id);
+      user.refreshToken = tokens.refreshToken;
+      await user.save();
+
+      return res.json({ ...tokens, user });
+
+    } catch {
+      return res.status(401).json({ message: "Token Apple inválido" });
+    }
+  }
+
 }
