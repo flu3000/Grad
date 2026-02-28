@@ -24,4 +24,4 @@ logs/
 *.log
 
 # Data
-data/SSP-SP/SPDadosCriminais_2025.xlsx
+data/*.xlsx
