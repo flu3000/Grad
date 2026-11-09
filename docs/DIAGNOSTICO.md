@@ -1,0 +1,89 @@
+# Diagnóstico do projeto Grad — 09/11/2026
+
+Varredura completa dos dois repositórios originais (`flu3000/Grad` e `flu3000/Grad-back`) antes da unificação.
+
+## Resumo
+
+| | App mobile (`apps/mobile`) | API (`apps/api`) |
+|---|---|---|
+| Último commit de código | 19/02/2026 (Commit 5) | 27/02/2026 (Commit 15) |
+| Commits | 6 | 14 |
+| Compila (TypeScript) | Sim | Sim (`npm run build` ok) |
+| Bundle Android (`expo export`) | Gera, mas só porque o código de login ainda não é usado | – |
+| Testes automatizados | Nenhum | Nenhum |
+| Vulnerabilidades (`npm audit`) | 39 (2 críticas, 19 altas) — maioria em ferramentas de dev | 13 (1 crítica, 5 altas) — corrigíveis com `npm audit fix` |
+| Progresso estimado | ~15%: mapa com localização + esqueleto de tela de cadastro | ~40%: auth completo, importação de distritos, rota de geolocalização |
+
+**O que já funciona:** API com login anônimo/Google/Apple e refresh token com rotação; MongoDB com
+distritos e subprefeituras de SP (convertidos de UTM para WGS84) e consulta "em qual distrito está este
+ponto"; app abre o mapa centrado na localização do usuário com uma barra de navegação flutuante.
+
+**O que ainda não existe:** nada da parte central do produto — ingestão dos BOs, pesos por tipo de crime,
+grade hexagonal, cálculo de nota e pintura do mapa. Também não há navegação entre telas nem login
+funcionando no app.
+
+## Problemas críticos (bloqueiam o app falar com a API)
+
+1. **Variável de ambiente no formato do Vite, não do Expo.** `apps/mobile/src/services/api.ts:5` e `:26` usam
+   `import.meta.env.VITE_API_URL`. O Expo só injeta variáveis com prefixo `EXPO_PUBLIC_` via
+   `process.env.EXPO_PUBLIC_API_URL`. Hoje `baseURL` fica `undefined`. O arquivo `src/vite-env.d.ts` também é herança do Vite.
+2. **URL interna do Railway.** O `.env` do app aponta para `https://grad-back.railway.internal`, endereço da
+   rede privada do Railway, inacessível de um celular. É preciso usar o domínio público
+   (`https://<servico>.up.railway.app`) ou `http://<IP-do-PC>:3333` em desenvolvimento.
+3. **`localStorage` e `window.location` não existem no React Native.** `src/services/TokenStorage.ts` e
+   `api.ts:37` vão quebrar em tempo de execução. Usar `expo-secure-store` (tokens) e React Navigation (redirecionar ao login).
+4. **Rotas de vínculo de conta divergentes.** O app chama `/auth/link-google` e `/auth/link-apple`
+   (`UserService.ts:47,57`); a API expõe `/auth/link/google` e `/auth/link/apple` (`auth.routes.ts:29-30`) → 404.
+
+## API (`apps/api`)
+
+- **Import do dotenv fora de ordem** (`src/server.ts:1-2`): `app` é importado antes de `dotenv/config`, então
+  `AuthController` cria o cliente Google com `GOOGLE_CLIENT_ID` vazio quando a API é iniciada com `npm start` + `.env`.
+  Em dev (`tsx --env-file`) e no Railway não aparece. Corrigir importando `dotenv/config` primeiro.
+- **`/neighborhoods/getAll` pesado** (`NeighborhoodController.ts:28`): devolve os 96 polígonos em resolução
+  total (o export tem ~11 MB) e ignora buracos/anéis internos. Precisa simplificar geometria (ex.: `@turf/simplify`,
+  já instalado) e/ou paginar por viewport.
+- **`/geo/locate`** (`GeoController.ts:9`): `!lat || !lng` rejeita coordenada 0 e não valida tipo; deveria ser
+  `GET` com query e validação via `zod` (já instalado, mas não usado).
+- **Vincular conta** (`linkGoogle`/`linkApple`): permite sobrescrever uma conta que já é Google/Apple, não só a
+  anônima. Restringir a `provider === "anonymous"`.
+- **Sem tratamento central de erros, sem CORS, sem rate limit.** `/auth/anonymous` pode ser chamado em loop
+  para criar usuários infinitos. Adicionar `express-rate-limit` e um middleware de erro.
+- **Respostas expõem o documento inteiro do usuário** (incluindo `refreshToken`). Criar um `toJSON`/DTO.
+- **Arquivos vazios / rascunhos:** `jobs/updateCrimeData.ts`, `services/auth.service.ts`, `services/crimeDataService.ts`,
+  `middlewares/refreshToken.middleware.ts`, `utils/hash.ts`. `models/CrimeStats.ts` tem só a interface (sem schema/model).
+- **`rotas_API.txt` descreve login por e-mail/senha** (criar usuário, verificar e-mail, esqueci senha) que não existe;
+  o código implementa só login social/anônimo. A tela `Cadastro` do app também é de e-mail/senha. **Decisão pendente.**
+- **Dependências sobrando:** `@types/bcryptjs` (sem bcrypt), `ts-node` (usa-se `tsx`). `importGeo.ts:21` calcula uma
+  variável `geometry` que não é usada.
+- **Rio de Janeiro:** dados em `data/rio/` mas não importados (`importGeo.ts:85`). O README fala só de SP.
+
+## App (`apps/mobile`)
+
+- **Sem navegação:** `App.tsx:15` renderiza `<Main />` direto. React Navigation está instalado mas não configurado.
+- **Telas de Login e Esqueci_Senha são arquivos vazios** (`index.ts` sem export) — importá-los quebra o build.
+- **Tela Cadastro:** `styles.ts:11` usa `30vh` (não suportado no RN) e cores de debug (`red`, `green`, `purple`).
+  Os `useState` de e-mail/senha nunca recebem valor porque `Text_Input` guarda o texto só internamente.
+  Botão de mostrar senha (ícones `Eye/EyeOff` importados) não implementado.
+- **Bottom navigation** com três botões vazios e estilos copiados do input (`StrengthBar` etc. não usados).
+- **Mapa:** `mapPadding` com valores estranhos (`bottom: -insets.bottom`); nenhum polígono ou hexágono desenhado.
+  Para build Android de produção, `react-native-maps` exige chave do Google Maps em `app.json`
+  (`android.config.googleMaps.apiKey`); no Expo Go funciona sem.
+- **`react-native-svg`** (necessário para `lucide-react-native`) não está declarado no `package.json`; rodar
+  `npx expo install react-native-svg`.
+- `app.json` declara `userInterfaceStyle: "light"`, mas o tema é escuro.
+
+## Repositório / infraestrutura
+
+- **Planilha de 100 MB no histórico do Grad-back.** O "Commit 15 - apagando a tabela pra deploy" só mudou o
+  `.gitignore`; o arquivo continuou versionado (a regra `data/*.xlsx` nem casava com `data/SSP-SP/...`). Isso deixa
+  o clone com ~103 MB. **No repositório unificado o arquivo foi removido de todo o histórico** e agora é ignorado.
+- `.idea/` (config do IDE) e `.env` estavam versionados no app — removidos do Git (os arquivos locais continuam).
+- Sem CI (GitHub Actions), sem lint/prettier, sem testes.
+
+## Dados disponíveis
+
+- `geosampa/distritos.geojson` (96) e `subprefeituras.geojson` (32): EPSG:31983, convertidos na importação.
+- `rio/bairros.geojson` (166) e `regioes_adm.geojson` (33): já em WGS84.
+- SSP-SP 2025 (fora do Git): ~1,16 milhão de BOs com lat/lng, rubrica e natureza. Muitos com lat/lng = 0
+  (sigilo) e nomes de bairro inconsistentes ("Sé" vs "SÉ") — usar lat/lng, não o nome do bairro.
