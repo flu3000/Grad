@@ -1,0 +1,15 @@
+{
+  "name": "grad-monorepo",
+  "private": true,
+  "description": "Grad — mapa de segurança de São Paulo (app Expo + API Express)",
+  "scripts": {
+    "install:all": "npm --prefix apps/api ci && npm --prefix apps/mobile ci",
+    "api:dev": "npm --prefix apps/api run dev",
+    "api:build": "npm --prefix apps/api run build",
+    "api:import-geo": "npm --prefix apps/api run import:geo",
+    "mobile:start": "npm --prefix apps/mobile start",
+    "mobile:android": "npm --prefix apps/mobile run android",
+    "mobile:ios": "npm --prefix apps/mobile run ios",
+    "typecheck": "npm --prefix apps/api exec -- tsc --noEmit -p apps/api && npm --prefix apps/mobile exec -- tsc --noEmit -p apps/mobile"
+  }
+}

@@ -1,0 +1,20 @@
+# Dependências
+node_modules/
+
+# Variáveis de ambiente (nunca versionar; use os arquivos .env.example)
+.env
+.env.*
+!.env.example
+
+# Build
+dist/
+
+# IDEs / sistema
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+
+# Planilhas grandes de dados brutos (ficam fora do Git — ver apps/api/data/README.md)
+*.xlsx
+~$*

@@ -10,6 +10,7 @@ dist/
 # Environment variables
 .env
 .env.*
+!.env.example
 
 # OS
 .DS_Store
@@ -24,4 +25,5 @@ logs/
 *.log
 
 # Data
-data/*.xlsx
+data/**/*.xlsx
+data/**/~$*
