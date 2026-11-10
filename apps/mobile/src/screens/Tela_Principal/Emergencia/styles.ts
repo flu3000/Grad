@@ -6,7 +6,7 @@ export const Destaque = styled.TouchableOpacity`
   padding: 16px;
   margin-bottom: 12px;
   border-radius: 16px;
-  background-color: ${({ theme }) => theme.colors.safetyLevels.level5};
+  background-color: ${({ theme }) => theme.colors.emergencia};
 `;
 
 export const DestaqueTextos = styled.View`
@@ -40,13 +40,13 @@ export const Numero = styled.View`
   border-radius: 10px;
   align-items: center;
   justify-content: center;
-  background-color: ${({ theme }) => theme.colors.textPrimary};
+  background-color: ${({ theme }) => theme.colors.chip};
 `;
 
 export const NumeroTexto = styled.Text`
   font-size: 18px;
   font-weight: 800;
-  color: ${({ theme }) => theme.colors.primary};
+  color: ${({ theme }) => theme.colors.textPrimary};
 `;
 
 export const ContatoTextos = styled.View`
@@ -67,5 +67,5 @@ export const Link = styled.TouchableOpacity`
   margin-top: 10px;
   padding: 13px;
   border-radius: 12px;
-  background-color: ${({ theme }) => theme.colors.textPrimary};
+  background-color: ${({ theme }) => theme.colors.accent};
 `;

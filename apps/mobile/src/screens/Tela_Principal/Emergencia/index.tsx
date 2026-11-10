@@ -53,7 +53,7 @@ const Emergencia = () => {
         </C.TextoSecundario>
         <S.Link onPress={() => Linking.openURL(DELEGACIA_ELETRONICA)} accessibilityRole="link">
           <C.BotaoTexto>Abrir a Delegacia Eletrônica</C.BotaoTexto>
-          <ExternalLink color={theme.colors.primary} size={16} />
+          <ExternalLink color={theme.colors.onAccent} size={16} />
         </S.Link>
       </C.Secao>
 

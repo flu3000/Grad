@@ -35,14 +35,14 @@ const Balao_Unidade = ({ unidade, onFechar }: { unidade: Unidade; onFechar: () =
 
       <S.Botoes>
         <S.Botao onPress={() => abrirRota(unidade)} accessibilityRole="button">
-          <Navigation color={theme.colors.primary} size={16} />
+          <Navigation color={theme.colors.onAccent} size={16} />
           <S.BotaoTexto>Como chegar</S.BotaoTexto>
         </S.Botao>
         <S.Botao
           onPress={() => ligar(unidade.telefone ?? info.telefone, unidade.telefone ? unidade.nome : info.servico)}
           accessibilityRole="button"
         >
-          <Phone color={theme.colors.primary} size={16} />
+          <Phone color={theme.colors.onAccent} size={16} />
           <S.BotaoTexto>{unidade.telefone ? 'Ligar' : `Ligar ${info.telefone}`}</S.BotaoTexto>
         </S.Botao>
       </S.Botoes>

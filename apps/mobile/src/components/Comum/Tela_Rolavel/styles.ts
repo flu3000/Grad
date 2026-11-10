@@ -48,14 +48,14 @@ export const Botao = styled.TouchableOpacity<{ $desativado?: boolean }>`
   padding: 14px;
   border-radius: 12px;
   align-items: center;
-  background-color: ${({ theme }) => theme.colors.textPrimary};
+  background-color: ${({ theme }) => theme.colors.accent};
   opacity: ${({ $desativado }) => ($desativado ? 0.4 : 1)};
 `;
 
 export const BotaoTexto = styled.Text`
   font-size: 15px;
   font-weight: 700;
-  color: ${({ theme }) => theme.colors.primary};
+  color: ${({ theme }) => theme.colors.onAccent};
 `;
 
 export const BotaoSecundario = styled.TouchableOpacity`

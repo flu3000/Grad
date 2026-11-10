@@ -17,7 +17,7 @@ const Abas = () => {
     <Tab.Navigator
       screenOptions={{
         headerShown: false,
-        tabBarActiveTintColor: theme.colors.textPrimary,
+        tabBarActiveTintColor: theme.colors.accent,
         tabBarInactiveTintColor: theme.colors.textSecondary,
         tabBarStyle: { backgroundColor: theme.colors.primary, borderTopColor: theme.colors.border },
         tabBarLabelStyle: { fontSize: 12, fontWeight: '600' },

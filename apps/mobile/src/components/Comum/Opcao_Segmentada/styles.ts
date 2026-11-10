@@ -22,11 +22,11 @@ export const Opcao = styled.TouchableOpacity<{ $ativa: boolean }>`
   padding: 9px 4px;
   border-radius: 9px;
   align-items: center;
-  background-color: ${({ theme, $ativa }) => ($ativa ? theme.colors.textPrimary : 'transparent')};
+  background-color: ${({ theme, $ativa }) => ($ativa ? theme.colors.accent : 'transparent')};
 `;
 
 export const Texto = styled.Text<{ $ativa: boolean }>`
   font-size: 14px;
   font-weight: 600;
-  color: ${({ theme, $ativa }) => ($ativa ? theme.colors.primary : theme.colors.textSecondary)};
+  color: ${({ theme, $ativa }) => ($ativa ? theme.colors.onAccent : theme.colors.textSecondary)};
 `;

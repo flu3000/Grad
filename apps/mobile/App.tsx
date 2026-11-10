@@ -24,7 +24,7 @@ function AppComTema() {
         card: colors.primary,
         text: colors.textPrimary,
         border: colors.border,
-        primary: colors.textPrimary,
+        primary: colors.accent,
       },
     };
   }, [esquema, colors]);

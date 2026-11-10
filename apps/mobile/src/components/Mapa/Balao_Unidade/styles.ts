@@ -74,14 +74,14 @@ export const Botao = styled.TouchableOpacity`
   padding: 11px;
   margin-right: 8px;
   border-radius: 12px;
-  background-color: ${({ theme }) => theme.colors.textPrimary};
+  background-color: ${({ theme }) => theme.colors.accent};
 `;
 
 export const BotaoTexto = styled.Text`
   margin-left: 6px;
   font-size: 14px;
   font-weight: 700;
-  color: ${({ theme }) => theme.colors.primary};
+  color: ${({ theme }) => theme.colors.onAccent};
 `;
 
 export const Nota = styled.Text`
