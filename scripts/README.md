@@ -33,8 +33,9 @@ npm run data:import-geo -- --gravar
 npm run data:import-crimes
 ```
 
-Esse segundo comando **não grava**: lê a planilha e gera `scripts/out/relatorio_crimes_2025.json` com
-linhas descartadas, contagem por categoria, os 50 textos de RUBRICA/NATUREZA que caíram em "outros",
+Esse segundo comando **não grava**: lê todas as abas da planilha (ex.: `JAN_A_JUN_2025` e `JUL_A_DEZ_2025`) e gera
+`scripts/out/relatorio_crimes_2025.json` com linhas por aba e por mês (avisa se um mês aparece em mais de uma aba,
+o que indicaria BOs duplicados), linhas descartadas, contagem por categoria, os 50 textos de RUBRICA/NATUREZA que caíram em "outros",
 os cortes de nível e quantos hexágonos ficam em cada nível. Revise (ou mande o relatório para o Claude
 revisar) e ajuste `src/config/crimeWeights.ts` se algum crime grave estiver caindo em "outros". Depois:
 

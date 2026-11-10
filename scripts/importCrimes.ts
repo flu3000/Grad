@@ -62,6 +62,19 @@ function cellText(v: unknown): string {
   return String(v);
 }
 
+/** Mês "AAAA-MM" de DATA_OCORRENCIA_BO (data ou serial do Excel, "AAAA-MM-DD" ou "DD/MM/AAAA"); "?" se não der. */
+function monthOf(v: unknown): string {
+  if (v instanceof Date && !Number.isNaN(v.getTime())) return v.toISOString().slice(0, 7);
+  // Sem estilos (leitura mais rápida), o exceljs entrega datas como número serial do Excel (dias desde 1899-12-30).
+  if (typeof v === 'number' && v > 20000 && v < 80000) return new Date(Math.round((v - 25569) * 86400000)).toISOString().slice(0, 7);
+  const t = cellText(v).trim();
+  let m = t.match(/^(\d{4})-(\d{2})/);
+  if (m) return `${m[1]}-${m[2]}`;
+  m = t.match(/^\d{1,2}\/(\d{1,2})\/(\d{4})/);
+  if (m) return `${m[2]}-${m[1].padStart(2, '0')}`;
+  return '?';
+}
+
 function defaultSpreadsheet(): string {
   const dir = path.join(dataDir(), 'SSP-SP');
   const file = fs.existsSync(dir) ? fs.readdirSync(dir).find((f) => f.endsWith('.xlsx') && !f.startsWith('~$')) : undefined;
@@ -110,9 +123,13 @@ async function main() {
     entries: 'ignore',
   });
 
+  // Linhas por aba e por mês da ocorrência: revela abas com meses repetidos (BOs contados em dobro).
+  const porAba: { aba: number; linhas: number; porMes: Record<string, number> }[] = [];
   let aba = 0;
   for await (const sheet of reader) {
     aba++;
+    const resumoAba = { aba, linhas: 0, porMes: {} as Record<string, number> };
+    porAba.push(resumoAba);
     let cols: Record<string, number> | null = null;
     for await (const row of sheet) {
       const values = row.values as unknown[];
@@ -125,6 +142,9 @@ async function main() {
         continue;
       }
       stats.linhas++;
+      resumoAba.linhas++;
+      const mes = cols.DATA_OCORRENCIA_BO !== undefined ? monthOf(values[cols.DATA_OCORRENCIA_BO]) : '?';
+      resumoAba.porMes[mes] = (resumoAba.porMes[mes] ?? 0) + 1;
       const lat = toNumber(values[cols.LATITUDE]);
       const lng = toNumber(values[cols.LONGITUDE]);
       if (!Number.isFinite(lat) || !Number.isFinite(lng) || lat === 0 || lng === 0) {
@@ -150,6 +170,13 @@ async function main() {
     if (!cols) console.log(`Aba ${aba}: sem as colunas ${REQUIRED.join(', ')} — ignorada`);
   }
   if (!stats.linhas) throw new Error('Nenhuma linha de dados encontrada.');
+
+  // Mês que aparece com volume relevante (>5% do mês) em mais de uma aba = provável duplicação.
+  const mesesRepetidos = [...new Set(porAba.flatMap((a) => Object.keys(a.porMes)))].filter((mes) => {
+    const contagens = porAba.map((a) => a.porMes[mes] ?? 0);
+    const total = contagens.reduce((x, y) => x + y, 0);
+    return mes !== '?' && contagens.filter((c) => c > total * 0.05).length > 1;
+  });
 
   // Nota = densidade ponderada (pesos/km²); níveis pelos quintis da resolução de referência.
   const refCells = agg.get(REFERENCE_RESOLUTION)!;
@@ -183,6 +210,8 @@ async function main() {
     periodo,
     arquivo: path.basename(arquivo),
     ...stats,
+    porAba,
+    mesesRepetidosEntreAbas: mesesRepetidos,
     porCategoria,
     pesos: CRIME_WEIGHTS,
     cortesDeNivel_pesoPorKm2: breaks.map((b) => Number(b.toFixed(2))),
@@ -194,6 +223,9 @@ async function main() {
   fs.writeFileSync(reportFile, JSON.stringify(report, null, 2));
 
   console.log(`\nLinhas: ${stats.linhas} | sem localização: ${stats.semLocalizacao} | fora do município: ${stats.foraDoMunicipio} | válidas: ${stats.validas}`);
+  for (const a of porAba) console.log(`Aba ${a.aba}: ${a.linhas} linhas, meses ${Object.keys(a.porMes).sort().join(', ')}`);
+  if (mesesRepetidos.length)
+    console.log(`⚠ ATENÇÃO: os meses ${mesesRepetidos.join(', ')} aparecem em mais de uma aba — os BOs podem estar duplicados. Não grave antes de conferir.`);
   console.log('Por categoria:', porCategoria);
   console.log('Cortes de nível (peso/km²):', report.cortesDeNivel_pesoPorKm2);
   for (const r of RESOLUTIONS) console.log(`Resolução ${r}: ${report.hexagonos[r].total} hexágonos, por nível 1..5 = ${niveis[r].join(' / ')}`);
