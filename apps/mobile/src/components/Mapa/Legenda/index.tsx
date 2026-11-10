@@ -1,25 +1,31 @@
 import React, { useState } from 'react';
 import { useTheme } from 'styled-components/native';
 import { INFO_UNIDADE, TIPOS_UNIDADE } from '../../../lib/unidades';
-import { NIVEIS, NIVEL_INFO, corDoNivel } from '../../../theme/niveis';
+import { NIVEIS, NIVEL_INFO, corDoNivel, textoSobreNivel } from '../../../theme/niveis';
 import * as S from './styles';
 
-/** Legenda dos níveis (e das unidades de segurança, se ligadas); toque para recolher/expandir. */
+/** Legenda compacta: faixa com os 8 níveis (e as unidades de segurança, se ligadas). Toque para recolher/expandir. */
 const Legenda = ({ comUnidades = false }: { comUnidades?: boolean }) => {
   const theme = useTheme();
   const [aberta, setAberta] = useState(true);
   return (
     <S.Container onPress={() => setAberta((a) => !a)} accessibilityRole="button" accessibilityLabel="Legenda do mapa">
       <S.Titulo>{aberta ? 'Nível de perigo' : 'Legenda'}</S.Titulo>
-      {aberta &&
-        NIVEIS.slice()
-          .reverse()
-          .map((n) => (
-            <S.Linha key={n}>
-              <S.Amostra $cor={corDoNivel(n)} />
-              <S.Texto>{`${n} · ${NIVEL_INFO[n].rotulo}`}</S.Texto>
-            </S.Linha>
-          ))}
+      {aberta && (
+        <>
+          <S.Faixa>
+            {NIVEIS.map((n) => (
+              <S.Quadrado key={n} $cor={corDoNivel(n)} accessibilityLabel={`Nível ${n}: ${NIVEL_INFO[n].rotulo}`}>
+                <S.Numero $cor={textoSobreNivel(n)}>{n}</S.Numero>
+              </S.Quadrado>
+            ))}
+          </S.Faixa>
+          <S.Extremos>
+            <S.Texto>{NIVEL_INFO[1].rotulo}</S.Texto>
+            <S.Texto>{NIVEL_INFO[8].rotulo}</S.Texto>
+          </S.Extremos>
+        </>
+      )}
       {aberta && comUnidades && (
         <>
           <S.Titulo style={{ marginTop: 10 }}>Segurança pública</S.Titulo>

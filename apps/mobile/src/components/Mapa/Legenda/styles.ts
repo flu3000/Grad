@@ -13,22 +13,39 @@ export const Titulo = styled.Text`
   color: ${({ theme }) => theme.colors.textPrimary};
 `;
 
+export const Faixa = styled.View`
+  flex-direction: row;
+  margin-top: 6px;
+`;
+
+export const Quadrado = styled.View<{ $cor: string }>`
+  width: 20px;
+  height: 18px;
+  align-items: center;
+  justify-content: center;
+  background-color: ${({ $cor }) => $cor};
+`;
+
+export const Numero = styled.Text<{ $cor: string }>`
+  font-size: 10px;
+  font-weight: 700;
+  color: ${({ $cor }) => $cor};
+`;
+
+export const Extremos = styled.View`
+  flex-direction: row;
+  justify-content: space-between;
+  margin-top: 3px;
+`;
+
 export const Linha = styled.View`
   flex-direction: row;
   align-items: center;
   margin-top: 6px;
 `;
 
-export const Amostra = styled.View<{ $cor: string }>`
-  width: 14px;
-  height: 14px;
-  border-radius: 3px;
-  margin-right: 8px;
-  background-color: ${({ $cor }) => $cor};
-`;
-
 export const Texto = styled.Text`
-  font-size: 12px;
+  font-size: 11px;
   color: ${({ theme }) => theme.colors.textSecondary};
 `;
 
