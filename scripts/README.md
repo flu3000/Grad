@@ -6,6 +6,7 @@ Por padrão só simulam e mostram um relatório; só gravam no Supabase com `--g
 | Script | O que faz |
 |---|---|
 | `importGeo.ts` | Subprefeituras e distritos da GeoSampa (EPSG:31983 → WGS84) → `subprefectures` e `districts` |
+| `importPostos.ts` | Unidades de segurança da GeoSampa (`data/geosampa/seguranca/`) → `security_units`; `--baixar` atualiza os arquivos pelo WFS |
 | `importCrimes.ts` | Planilha da SSP-SP → hexágonos H3 (resoluções 7, 8 e 9) com nota e nível → `hex_cells` |
 
 ## Passo a passo
