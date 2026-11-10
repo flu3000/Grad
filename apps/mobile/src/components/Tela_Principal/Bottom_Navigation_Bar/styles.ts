@@ -1,64 +1,40 @@
 import styled from 'styled-components/native';
 
-export const Wrapper = styled.View<{ bottomInset: number }>`
-    position: absolute;
-    display: flex;
-    width: 85%;
-    height: 72px;
-    bottom: ${({ bottomInset }) => bottomInset}px;
-    border-radius: 36px;
-    background-color: ${({ theme }) => theme.colors.primary};
-    align-self: center;
-    align-items: center;
-    justify-content: center;
-`;
+/** Altura da barra; as telas usam para não ficar com conteúdo escondido atrás dela. */
+export const ALTURA_BARRA = 72;
 
-export const MainContainer = styled.View<{ bottomInset: number }>`
-  display: flex;
+export const Wrapper = styled.View<{ $bottomInset: number }>`
+  position: absolute;
   flex-direction: row;
-  height: 72px;
-  width: 100%;
-  align-items: center;
-  justify-content: space-between;
+  width: 85%;
+  height: ${ALTURA_BARRA}px;
+  bottom: ${({ $bottomInset }) => $bottomInset + 8}px;
   border-radius: 36px;
   background-color: ${({ theme }) => theme.colors.primary};
-  padding: 0px 4px;
-`;
-
-export const NavButton = styled.TouchableOpacity<{ bottomInset: number }>`
-  border-radius: 32px;
-  background-color: ${({ theme }) => theme.colors.textPrimary};
+  align-self: center;
   align-items: center;
-  height: 64px;
-  aspect-ratio: 1;
-  justify-content: center;
+  justify-content: space-between;
+  padding: 0px 4px;
+  elevation: 6;
+  shadow-color: ${({ theme }) => theme.colors.shadow};
+  shadow-offset: 0px 4px;
+  shadow-opacity: 1;
+  shadow-radius: 8px;
 `;
 
-export const TextInput = styled.TextInput`
+export const NavButton = styled.TouchableOpacity<{ $ativo: boolean }>`
   flex: 1;
-  font-size: 18px;
-  color: ${({ theme }) => theme.colors.primary};
+  height: 64px;
+  margin: 0px 2px;
+  border-radius: 32px;
+  align-items: center;
+  justify-content: center;
+  background-color: ${({ theme, $ativo }) => ($ativo ? theme.colors.textPrimary : 'transparent')};
 `;
 
-export const IconButton = styled.TouchableOpacity`
-  padding-left: 8px;
-`;
-
-export const StrengthBarContainer = styled.View`
-  margin-top: 6px;
-  height: 4px;
-  width: 100%;
-  background-color: ${({ theme }) => theme.colors.border};
-  border-radius: 4px;
-  overflow: hidden;
-`;
-
-export const StrengthBar = styled.View<{ strength: number }>`
-  height: 100%;
-  width: ${({ strength }) => (strength / 5) * 100}%;
-  background-color: ${({ strength }) => {
-    if (strength <= 2) return '#dc2626';
-    if (strength === 3) return '#f59e0b';
-    return '#16a34a';
-  }};
+export const Rotulo = styled.Text<{ $ativo: boolean }>`
+  margin-top: 2px;
+  font-size: 12px;
+  font-weight: 600;
+  color: ${({ theme, $ativo }) => ($ativo ? theme.colors.primary : theme.colors.textSecondary)};
 `;
