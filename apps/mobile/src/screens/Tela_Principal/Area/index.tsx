@@ -81,9 +81,9 @@ const Area = () => {
       </C.Secao>
 
       <C.TextoSecundario>
-        Fonte: boletins de ocorrência da SSP-SP de 2025 com localização. O nível compara este trecho com o resto da
-        cidade, ponderando a gravidade de cada crime. Casos de estupro, publicados sem localização exata, são distribuídos
-        pelo distrito.
+        Fonte: boletins de ocorrência da SSP-SP de 2025 com localização. O nível (de 1 a 10) compara este trecho com
+        áreas do mesmo tamanho no resto da cidade, ponderando a gravidade de cada crime. Casos de estupro, publicados sem
+        localização exata, são distribuídos pelo distrito.
       </C.TextoSecundario>
     </Tela_Rolavel>
   );

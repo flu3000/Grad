@@ -5,6 +5,11 @@ import type { MultiPolygon, Polygon, Position } from 'geojson';
 const EPSG_31983 = '+proj=utm +zone=23 +south +ellps=GRS80 +units=m +no_defs';
 const toWgs84 = proj4(EPSG_31983, proj4.WGS84);
 
+/** Converte um ponto de EPSG:31983 para WGS84 [lng, lat]. */
+export function pointToWgs84([x, y]: Position): Position {
+  return toWgs84.forward([x, y]) as Position;
+}
+
 /** Remove vértices repetidos em sequência e garante o anel fechado. */
 export function cleanRing(ring: Position[]): Position[] {
   const cleaned: Position[] = [];

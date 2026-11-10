@@ -55,6 +55,7 @@ Com `scripts/.env` preenchido (ver `scripts/.env.example`) e a planilha em `data
 ```bash
 npm run data:import-geo        # simula; acrescente -- --gravar para gravar no Supabase
 npm run data:import-crimes     # gera o relatório; acrescente -- --gravar para gravar
+npm run data:import-postos     # polícia, GCM e bombeiros da GeoSampa; -- --gravar para gravar
 ```
 
 Passo a passo e critérios do cálculo da nota em [scripts/README.md](scripts/README.md).

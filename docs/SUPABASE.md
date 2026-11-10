@@ -20,6 +20,9 @@ supabase/
 | `20261110005703_funcoes_mapa` | Funções `hexagons_in_view` e `locate_point` (security invoker, `search_path` vazio) |
 | `20261110012322_resolucao_dinamica` | As duas funções passam a receber a resolução H3 (`res`, padrão 8) |
 | `20261110121600_locate_point_com_contagens` | `locate_point` devolve também `counts` (total, peso e BOs por categoria) para a aba Área |
+| `20261110151858_escala_de_10_niveis_por_resolucao` | 10 níveis, com cortes por resolução (percentis 15/30/45/60/72/82/90/95/98) |
+| `20261110145922_escala_de_8_niveis` | Níveis passam de 5 para 8 (percentis 15/30/45/60/75/87/95 da resolução 8) e são recalculados |
+| `20261110140840_unidades_de_seguranca` | Tabela `security_units` (PM, Polícia Civil, GCM e Bombeiros da GeoSampa) e função `security_units_in_view` |
 | `20261110015508_corrige_geometrias_invalidas` | Gatilho que aplica `st_makevalid` em distritos/subprefeituras inválidos ao gravar (Lajeado e Guaianases vêm com autointerseção da GeoSampa) |
 
 A extensão `h3` **não** está disponível no projeto (só PostGIS 3.3.7). Os índices H3 e os polígonos dos
@@ -29,7 +32,7 @@ hexágonos são calculados no script de importação com `h3-js` e gravados em `
 
 - `subprefectures(id, code, name, acronym, area_km2, geom MultiPolygon)` — `id` = `cd_identificador_subprefeitura` da GeoSampa.
 - `districts(id, code, name, acronym, subprefecture_id → subprefectures, area_km2, geom MultiPolygon)` — `id` = `cd_identificador_distrito`.
-- `hex_cells(h3_index pk, resolution, geom Polygon, score, level 1..5, counts jsonb, period, updated_at)`.
+- `hex_cells(h3_index pk, resolution, geom Polygon, score, level 1..10, counts jsonb, period, updated_at)`.
 
 Escrita: só pelos scripts com a chave secreta (ignora RLS). `anon` e `authenticated` não têm privilégio de
 insert/update/delete (testado: `permission denied for table hex_cells`).
@@ -45,6 +48,15 @@ supabase.rpc('hexagons_in_view', { min_lng, min_lat, max_lng, max_lat, res: 8, m
 supabase.rpc('locate_point', { lat, lng, res: 8 })
 // → [{ district_id, district_name, subprefecture_id, subprefecture_name, h3_index, level, score, counts }]
 ```
+
+### Unidades de segurança
+
+```ts
+supabase.rpc('security_units_in_view', { min_lng, min_lat, max_lng, max_lat, max_units: 400 })
+// → [{ id, kind, name, address, neighborhood, postal_code, phone, district_name, lat, lng }]
+```
+
+`kind`: `policia_militar`, `policia_civil`, `gcm` ou `bombeiros`. Carga com `npm run data:import-postos -- --gravar`.
 
 ### Zoom dinâmico
 `hex_cells` guarda as resoluções 7 (≈ 5,2 km² por hexágono, 373 em SP), 8 (≈ 0,74 km², 2.278) e 9 (≈ 0,11 km², 14.985).
@@ -75,5 +87,6 @@ Passo a passo (credenciais no Google Cloud/Apple, provedores no Supabase e app d
 Ativar CAPTCHA (Cloudflare Turnstile) em *Authentication → Attack Protection* para o login anônimo.
 
 ## Advisors (10/11/2026)
+- Segurança: `auth_leaked_password_protection` (WARN) — só vale para login por e-mail/senha, que o app não usa.
 - Segurança: nenhum aviso.
 - Performance: apenas `unused_index` (INFO) em índices de tabelas ainda vazias — esperado; reavaliar após a importação.

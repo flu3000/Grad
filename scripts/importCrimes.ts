@@ -22,12 +22,11 @@ import {
   addDistributed,
   addOccurrence,
   density,
-  pointDensity,
   levelBreaks,
   levelFor,
   newAggregation,
-  REFERENCE_RESOLUTION,
   RESOLUTIONS,
+  TOTAL_NIVEIS,
 } from './src/lib/scoring';
 import { adminClient, upsertInBatches } from './src/lib/supabase';
 
@@ -236,20 +235,22 @@ async function main() {
     return mes !== '?' && total >= stats.linhas * 0.01 && (contagens[1] ?? 0) >= total * 0.25;
   });
 
-  // Nota = densidade ponderada (pesos/km²); níveis pelos quintis da resolução de referência.
-  const refCells = agg.get(REFERENCE_RESOLUTION)!;
-  const breaks = levelBreaks([...refCells].map(([h, s]) => pointDensity(h, s)));
+  // Nota = densidade ponderada (pesos/km²); níveis 1..10 pelos percentis de CADA resolução.
+  // Só hexágonos com BO de coordenada entram nos percentis (os que só recebem estupro distribuído têm nota quase zero).
+  const cortes = new Map(
+    RESOLUTIONS.map((res) => [res, levelBreaks([...agg.get(res)!].filter(([, s]) => s.total > 0).map(([h, s]) => density(h, s)))]),
+  );
 
   const rows: object[] = [];
   const niveis: Record<number, number[]> = {};
   for (const res of RESOLUTIONS) {
     const cells = agg.get(res)!;
     const all = new Set([...grid.get(res)!, ...cells.keys()]);
-    niveis[res] = [0, 0, 0, 0, 0];
+    niveis[res] = Array.from({ length: TOTAL_NIVEIS }, () => 0);
     for (const h of all) {
       const s = cells.get(h);
       const score = density(h, s);
-      const level = levelFor(score, breaks);
+      const level = levelFor(score, cortes.get(res)!);
       niveis[res][level - 1]++;
       rows.push({
         h3_index: h,
@@ -282,7 +283,7 @@ async function main() {
     porCategoria,
     semLocalizacao_distribuidosPeloDistrito: distribuidos,
     pesos: CRIME_WEIGHTS,
-    cortesDeNivel_pesoPorKm2: breaks.map((b) => Number(b.toFixed(2))),
+    cortesDeNivel_pesoPorKm2: Object.fromEntries(RESOLUTIONS.map((r) => [r, cortes.get(r)!.map((b) => Number(b.toFixed(2)))])),
     hexagonos: Object.fromEntries(RESOLUTIONS.map((r) => [r, { total: niveis[r].reduce((a, b) => a + b, 0), porNivel: niveis[r] }])),
     textosEmOutros_top50: [...textosOutros].sort((a, b) => b[1] - a[1]).slice(0, 50),
   };
@@ -324,7 +325,7 @@ async function main() {
   console.log(`  estupro, bairros que não casam com distrito (top 15): ${lista(diag.estupro_bairrosQueNaoCasam_top30.slice(0, 15))}`);
   console.log(`Textos que caíram em "outros" (top 10): ${lista(report.textosEmOutros_top50.slice(0, 10))}`);
   console.log('Cortes de nível (peso/km²):', report.cortesDeNivel_pesoPorKm2);
-  for (const r of RESOLUTIONS) console.log(`Resolução ${r}: ${report.hexagonos[r].total} hexágonos, por nível 1..5 = ${niveis[r].join(' / ')}`);
+  for (const r of RESOLUTIONS) console.log(`Resolução ${r}: ${report.hexagonos[r].total} hexágonos, por nível 1..10 = ${niveis[r].join(' / ')}`);
   console.log(`Relatório completo: ${reportFile}`);
 
   if (!gravar) {

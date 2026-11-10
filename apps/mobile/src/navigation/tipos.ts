@@ -3,6 +3,7 @@ import type { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
 export type AbasParamList = {
   Mapa: undefined;
   Area: undefined;
+  Emergencia: undefined;
   Perfil: undefined;
 };
 
