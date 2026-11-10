@@ -6,6 +6,9 @@ node_modules/
 .env.*
 !.env.example
 
+# Estado local do Expo (criado se algum comando do Expo rodar fora de apps/mobile)
+.expo/
+
 # Build
 dist/
 

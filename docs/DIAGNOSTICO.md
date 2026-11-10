@@ -156,3 +156,31 @@ funcionando no app.
 - `package.json` da raiz sem os atalhos `api:*`; `install:all` e `typecheck` cobrem `apps/mobile` e `scripts`.
 - **Pendente na Fase 3:** `apps/mobile/.env.example` ainda tem `VITE_API_URL` apontando para o Railway; será trocado
   por `EXPO_PUBLIC_SUPABASE_URL` e `EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY`.
+
+## Atualização — 10/11/2026 (Fase 3, itens 1 a 5)
+
+- App reescrito sobre o Supabase. Resolvidos os problemas críticos do início deste documento: `VITE_API_URL`, URL do
+  Railway, `localStorage`/`window.location` e rotas de vínculo divergentes (os arquivos `api.ts`, `TokenStorage.ts`,
+  `UserService.ts`, `vite-env.d.ts` e `interfaces/User.ts` foram apagados; axios removido).
+- Navegação por abas (Mapa, Área, Perfil) com a barra flutuante; entra direto no mapa como convidado.
+- Mapa: hexágonos por resolução conforme o zoom (`latitudeDelta` > 0,15 → 7; > 0,04 → 8; senão 9), busca 350 ms
+  depois do último movimento, cancelando a anterior; legenda; card do local atual (`locate_point`) e estilo escuro.
+- Nível 1 passou a ser cinza neutro ("poucos registros"), não verde.
+- Telas de e-mail/senha (Cadastro, Login, Esqueci_Senha) e `Text_Input` removidas. Estilos de debug, `30vh`,
+  `mapPadding` negativo e `userInterfaceStyle: light` corrigidos. TypeScript em modo estrito.
+- Verificado aqui: `tsc` estrito e `expo export` para Android e iOS sem erros; funções do mapa testadas no banco como
+  `anon`. **Não testado em celular** (o ambiente da nuvem não roda o app nem acessa o Supabase por HTTP).
+- **Pendente:** build Android de produção precisa da chave do Google Maps em `app.json` (Fase 4.3); o nível 5 ainda
+  junta scores muito diferentes (avaliar no celular).
+
+## Dependências e `npm audit` — 10/11/2026
+
+- **App atualizado do Expo SDK 54 para o 58** (React Native 0.88, React 19.3, react-native-maps 1.29), porque o Expo Go
+  da loja só abre projetos do SDK mais recente. Dependências nativas alinhadas com `expo install --fix`.
+  `react-native-get-random-values` (fora do Expo Go 58) trocado por `expo-crypto` no armazenamento da sessão.
+  `newArchEnabled` e `android.edgeToEdgeEnabled` saíram do `app.json` (obrigatórios desde o SDK 55).
+- `apps/mobile`: 5 vulnerabilidades moderadas, todas no CLI do Expo (`glob` 13 e `minimatch` 10 em `@expo/cli` e
+  `@expo/fingerprint`), que roda só no computador de desenvolvimento. O npm sugere "corrigir" voltando para o Expo 53;
+  **não** usar `npm audit fix --force`. Os `overrides` de `ws`/`postcss` do SDK 54 não são mais necessários.
+- `scripts`: 0 vulnerabilidades (`overrides` de `uuid` → 11.x; o exceljs só usa `v4`, que não mudou).
+- Os avisos `npm warn deprecated` (inflight, glob, rimraf, fstream…) vêm de dependências indiretas e não afetam o uso.

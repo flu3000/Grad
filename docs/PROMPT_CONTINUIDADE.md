@@ -32,7 +32,7 @@ sem servidor próprio, projeto na região sa-east-1 (São Paulo), plano gratuito
   linkIdentity({ provider, token }). Login social exige development build (não funciona no Expo Go).
 
 ## Estado atual
-- apps/mobile (Expo SDK 54, RN 0.81, React 19.1, TS, styled-components, react-native-maps, expo-location):
+- apps/mobile (Expo SDK 58, RN 0.88, React 19.3, TS, styled-components, react-native-maps, expo-location):
   só a tela do mapa com a localização do usuário e uma bottom bar vazia; telas de login vazias; camada
   api.ts/TokenStorage.ts/UserService.ts escrita para web/Vite e quebrada no React Native.
 - Supabase (projeto grad, ref snuxiwwvlaryggezcezi): esquema, RLS e funções hexagons_in_view/locate_point
@@ -73,7 +73,7 @@ Fase 2 — Ingestão de dados (concluída em 10/11/2026) (scripts locais, TypeSc
 3. Depois que tudo funcionar no Supabase, apague apps/api (Express, Mongoose, rotas, JWT) e mova os dados
    GeoJSON e o README de dados para data/ na raiz. Atualize .gitignore, package.json da raiz e docs.
 
-Fase 3 — App
+Fase 3 — App (itens 1 a 5 feitos em 10/11/2026; e-mail/senha removido; falta o item 6)
 1. @supabase/supabase-js com armazenamento de sessão seguindo o guia oficial do Supabase para Expo;
    variáveis EXPO_PUBLIC_SUPABASE_URL e EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY (.env.example). Apague api.ts,
    TokenStorage.ts, UserService.ts e vite-env.d.ts; remova axios se não for mais usado.
@@ -100,5 +100,5 @@ Fase 4 — Qualidade e entrega
 - Use npx expo install para dependências do app.
 - Ao final de cada fase, atualize CLAUDE.md, docs/DIAGNOSTICO.md e este roadmap com o novo estado.
 
-Comece pela Fase 3.
+Comece pela Fase 3, item 6.
 ```
