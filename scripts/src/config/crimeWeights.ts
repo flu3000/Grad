@@ -53,6 +53,9 @@ export const CRIME_WEIGHTS: Record<CrimeCategory, number> = {
 export const DISTRIBUIR_SEM_LOCALIZACAO: CrimeCategory[] = ['estupro'];
 
 export const CRIME_RULES: [CrimeCategory, RegExp][] = [
+  // Tema 506 do STF (porte de maconha para consumo deixou de ser crime): "ILÍCITO EXTRAPENAL (TEMA 506 STF)".
+  // Vem antes de tudo; o porte para consumo do art. 28 continua em "outros" (0,5). Aprovado em 10/11/2026.
+  ['nao_criminal', /ILICITO EXTRA ?-?PENAL|TEMA 506/],
   ['nao_criminal', /\b(PERDA|EXTRAVIO|DESAPARECIMENTO|ENCONTRO DE|ACHADO|LOCALIZACAO DE|MORTE SUSPEITA|MORTE NATURAL|SUICIDIO|NAO CRIMINAL|FATO ATIPICO)\b|LOCALIZACAO\/APREENSAO|CUMPRIMENTO DE MANDADO/],
   // ↑ inclui ações da polícia (apreensão, mandado), que não são crime com vítima
   ['latrocinio', /LATROCINIO|ROUBO SEGUIDO DE MORTE/],
@@ -84,4 +87,21 @@ export function classifyCrime(rubrica: string, natureza: string): CrimeCategory 
   const text = normalizeText(`${rubrica} | ${natureza}`);
   for (const [category, rule] of CRIME_RULES) if (rule.test(text)) return category;
   return 'outros';
+}
+
+/** Posição de cada categoria em CRIME_RULES (desempate da gravidade); "outros" não tem regra e fica por último. */
+const ORDEM = new Map<CrimeCategory, number>();
+CRIME_RULES.forEach(([c], i) => ORDEM.has(c) || ORDEM.set(c, i));
+
+/**
+ * A categoria mais grave de um BO com várias naturezas: maior peso; empate pela ordem de CRIME_RULES.
+ * Decisão 12 (aprovada): o BO conta uma vez, nesta categoria, com o peso dela.
+ */
+export function maisGrave(categorias: readonly CrimeCategory[]): CrimeCategory {
+  let melhor = categorias[0];
+  for (const c of categorias.slice(1)) {
+    const dw = CRIME_WEIGHTS[c] - CRIME_WEIGHTS[melhor];
+    if (dw > 0 || (dw === 0 && (ORDEM.get(c) ?? Infinity) < (ORDEM.get(melhor) ?? Infinity))) melhor = c;
+  }
+  return melhor;
 }
