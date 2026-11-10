@@ -17,7 +17,7 @@ import { CRIME_WEIGHTS, DISTRIBUIR_SEM_LOCALIZACAO, classifyCrime, normalizeText
 import { readGeoSampa } from './src/lib/city';
 import { DiagnosticoSemLocalizacao, normalizarBairro } from './src/lib/semLocalizacao';
 import { polygonToEwkt } from './src/lib/geometry';
-import { arg, dataDir, outDir } from './src/lib/paths';
+import { arg, dataDir, legacySpreadsheetDir, outDir } from './src/lib/paths';
 import {
   addDistributed,
   addOccurrence,
@@ -81,7 +81,10 @@ function monthOf(v: unknown): string {
 function defaultSpreadsheet(): string {
   const dir = path.join(dataDir(), 'SSP-SP');
   const file = fs.existsSync(dir) ? fs.readdirSync(dir).find((f) => f.endsWith('.xlsx') && !f.startsWith('~$')) : undefined;
-  if (!file) throw new Error(`Nenhuma planilha .xlsx em ${dir}. Use --arquivo=caminho.xlsx`);
+  if (!file) {
+    const antiga = fs.existsSync(legacySpreadsheetDir) ? ` Ela parece estar em ${legacySpreadsheetDir}: mova para ${dir}.` : '';
+    throw new Error(`Nenhuma planilha .xlsx em ${dir}.${antiga} Ou use --arquivo=caminho.xlsx`);
+  }
   return path.join(dir, file);
 }
 

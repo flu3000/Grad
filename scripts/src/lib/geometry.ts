@@ -1,7 +1,7 @@
 import proj4 from 'proj4';
 import type { MultiPolygon, Polygon, Position } from 'geojson';
 
-// SIRGAS 2000 / UTM 23S (EPSG:31983), sistema dos GeoJSON da GeoSampa. Mesma definição do apps/api.
+// SIRGAS 2000 / UTM 23S (EPSG:31983), sistema dos GeoJSON da GeoSampa. Mesma definição da antiga API Express.
 const EPSG_31983 = '+proj=utm +zone=23 +south +ellps=GRS80 +units=m +no_defs';
 const toWgs84 = proj4(EPSG_31983, proj4.WGS84);
 
