@@ -46,7 +46,7 @@ sem servidor próprio, projeto na região sa-east-1 (São Paulo), plano gratuito
 
 ## Roadmap (na ordem; commits pequenos em português)
 
-Fase 0 — Configuração do repositório
+Fase 0 — Configuração do repositório (concluída em 10/11/2026)
 1. Confirme que .claude/settings.json tem a atribuição vazia e que CLAUDE.md contém a regra de autoria.
 2. Confira que CLAUDE.md e README já apontam o Supabase como backend (o Railway foi abandonado).
 

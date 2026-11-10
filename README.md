@@ -30,6 +30,10 @@ de commits dos dois preservado.
 
 ## Rodando localmente
 
+> **Setup legado.** As instruções abaixo valem para a API Express + MongoDB, que será removida na Fase 2
+> do roadmap ([docs/PROMPT_CONTINUIDADE.md](docs/PROMPT_CONTINUIDADE.md)). Depois da migração, o app falará
+> direto com o Supabase e não haverá API para subir.
+
 Pré-requisitos: Node.js 22+, npm, uma instância MongoDB (ex.: MongoDB Atlas) e o app Expo Go
 no celular (ou emulador Android/iOS).
 

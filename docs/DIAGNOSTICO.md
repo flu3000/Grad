@@ -27,7 +27,7 @@ funcionando no app.
 1. **Variável de ambiente no formato do Vite, não do Expo.** `apps/mobile/src/services/api.ts:5` e `:26` usam
    `import.meta.env.VITE_API_URL`. O Expo só injeta variáveis com prefixo `EXPO_PUBLIC_` via
    `process.env.EXPO_PUBLIC_API_URL`. Hoje `baseURL` fica `undefined`. O arquivo `src/vite-env.d.ts` também é herança do Vite.
-2. **URL interna do Railway.** O `.env` do app aponta para `https://grad-back.railway.internal`, endereço da
+2. ~~**URL interna do Railway.**~~ *(Obsoleto em 10/11/2026: o Railway foi abandonado em favor do Supabase.)* O `.env` do app aponta para `https://grad-back.railway.internal`, endereço da
    rede privada do Railway, inacessível de um celular. É preciso usar o domínio público
    (`https://<servico>.up.railway.app`) ou `http://<IP-do-PC>:3333` em desenvolvimento.
 3. **`localStorage` e `window.location` não existem no React Native.** `src/services/TokenStorage.ts` e

@@ -43,5 +43,6 @@ de boletins de ocorrência da SSP-SP. Projeto pessoal; idioma do código e dos c
 - Para dependências nativas no app, use `npx expo install <pacote>` (escolhe a versão compatível com o SDK).
 
 ## Estado atual e próximos passos
+Fase 0 (configuração do repositório) concluída. Próxima: Fase 1 (projeto Supabase, esquema e auth).
 Ver `docs/DIAGNOSTICO.md` (bugs conhecidos), `docs/DECISAO_BACKEND.md` (por que Supabase) e
 `docs/PROMPT_CONTINUIDADE.md` (roadmap).
