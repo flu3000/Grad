@@ -8,15 +8,13 @@ export const REFERENCE_RESOLUTION = 8;
 
 export interface CellStats {
   weight: number;
-  /** Só o peso dos BOs com coordenada (usado para calcular os cortes de nível). */
-  pointWeight: number;
   total: number;
   byCategory: Partial<Record<CrimeCategory, number>>;
   /** Fração de BOs sem coordenada distribuídos pelo distrito (ver addDistributed). */
   distributed: Partial<Record<CrimeCategory, number>>;
 }
 
-const emptyStats = (): CellStats => ({ weight: 0, pointWeight: 0, total: 0, byCategory: {}, distributed: {} });
+const emptyStats = (): CellStats => ({ weight: 0, total: 0, byCategory: {}, distributed: {} });
 
 export type Aggregation = Map<number, Map<string, CellStats>>;
 
@@ -31,7 +29,6 @@ export function addOccurrence(agg: Aggregation, lat: number, lng: number, catego
     let s = cells.get(h);
     if (!s) cells.set(h, (s = emptyStats()));
     s.weight += weight;
-    s.pointWeight += weight;
     s.total += 1;
     s.byCategory[category] = (s.byCategory[category] ?? 0) + 1;
   }
@@ -59,14 +56,6 @@ export function density(h3: string, stats: CellStats | undefined): number {
   return stats ? stats.weight / cellArea(h3, 'km2') : 0;
 }
 
-/**
- * Densidade só dos BOs com coordenada, base dos cortes de nível. Sem isso, hexágonos que só recebem uma
- * fração de estupro distribuído (nota quase zero) entrariam nos quintis e puxariam a cidade inteira para cima.
- */
-export function pointDensity(h3: string, stats: CellStats | undefined): number {
-  return stats ? stats.pointWeight / cellArea(h3, 'km2') : 0;
-}
-
 /** Quantil por interpolação linear de uma lista já ordenada. */
 export function quantile(sorted: number[], q: number): number {
   if (!sorted.length) return 0;
@@ -76,19 +65,23 @@ export function quantile(sorted: number[], q: number): number {
   return sorted[lo] + (sorted[hi] - sorted[lo]) * (pos - lo);
 }
 
+/** Percentis dos cortes entre os 8 níveis: faixas mais estreitas no topo, onde a diferença entre lugares é maior. */
+export const QUANTIS_DOS_CORTES = [0.15, 0.3, 0.45, 0.6, 0.75, 0.87, 0.95] as const;
+export const TOTAL_NIVEIS = QUANTIS_DOS_CORTES.length + 1;
+export type Nivel = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8;
+
 /**
- * Cortes dos níveis 1..5: quintis da densidade (BOs com coordenada) dos hexágonos COM ocorrência na resolução
- * de referência.
- * Usar os mesmos cortes (em ocorrências ponderadas/km²) em todas as resoluções mantém a cor de um lugar
- * coerente quando o zoom muda.
+ * Cortes dos níveis 1..8: percentis (QUANTIS_DOS_CORTES) do score dos hexágonos da resolução de referência que têm
+ * BOs com localização. Usar os mesmos cortes (em peso/km²) em todas as resoluções mantém a cor de um lugar coerente
+ * quando o zoom muda. Mesma regra da migration escala_de_8_niveis.
  */
-export function levelBreaks(densities: number[]): [number, number, number, number] {
+export function levelBreaks(densities: number[]): number[] {
   const sorted = densities.filter((d) => d > 0).sort((a, b) => a - b);
-  return [0.2, 0.4, 0.6, 0.8].map((q) => quantile(sorted, q)) as [number, number, number, number];
+  return QUANTIS_DOS_CORTES.map((q) => quantile(sorted, q));
 }
 
 /** Sem ocorrência → nível 1; senão, quantos cortes a densidade ultrapassa + 1. */
-export function levelFor(d: number, breaks: readonly number[]): 1 | 2 | 3 | 4 | 5 {
+export function levelFor(d: number, breaks: readonly number[]): Nivel {
   if (d <= 0) return 1;
-  return (1 + breaks.filter((b) => d > b).length) as 1 | 2 | 3 | 4 | 5;
+  return (1 + breaks.filter((b) => d > b).length) as Nivel;
 }
