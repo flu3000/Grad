@@ -9,7 +9,10 @@ export interface PontoPadrao {
   descricao: string;
 }
 
-export const PONTOS_PADRAO: PontoPadrao[] = [{ lat: -23.405645, lng: -46.734928, descricao: 'Perus, logradouro "ACESSO ACESSO" (400+ BOs por ano)' }];
+export const PONTOS_PADRAO: PontoPadrao[] = [
+  { lat: -23.405645, lng: -46.734928, descricao: 'Perus, logradouro "ACESSO ACESSO" (400+ BOs por ano)' },
+  { lat: -23.4056, lng: -46.734928, descricao: 'Perus, o mesmo ponto com uma casa a menos ("ACESSO ACESSO", 38 BOs em 2024)' },
+];
 
 /** Chave com 6 casas decimais, a mesma do diagnóstico. */
 export const chavePonto = (lat: number, lng: number) => `${lat.toFixed(6)},${lng.toFixed(6)}`;
