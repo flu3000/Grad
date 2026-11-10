@@ -123,3 +123,6 @@ funcionando no app.
 - O aviso de meses repetidos entre abas era esperado (data da ocorrência ≠ data do registro). Agora os duplicados são
   removidos pelo número do BO + ano + delegacia.
 - Novas categorias propostas: extorsão mediante sequestro (9), porte/posse de arma (3), tráfico (2), culposos (0).
+- Estupro sem coordenada: proposta de distribuir o peso pela área do distrito (não no centroide, para não criar
+  mancha falsa num hexágono), contando só local público. O relatório agora traz `semLocalizacao_diagnostico`
+  (cidade, categoria, se o BAIRRO casa com um distrito, tipo de local) para decidir com os dados reais.

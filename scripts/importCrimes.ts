@@ -15,6 +15,7 @@ import { cellToBoundary, polygonToCellsExperimental, POLYGON_TO_CELLS_FLAGS } fr
 import type { MultiPolygon } from 'geojson';
 import { CRIME_WEIGHTS, classifyCrime, normalizeText, type CrimeCategory } from './src/config/crimeWeights';
 import { readGeoSampa } from './src/lib/city';
+import { DiagnosticoSemLocalizacao } from './src/lib/semLocalizacao';
 import { polygonToEwkt } from './src/lib/geometry';
 import { arg, dataDir, outDir } from './src/lib/paths';
 import {
@@ -89,7 +90,9 @@ async function main() {
   console.log(`Planilha: ${arquivo}\nPeríodo: ${periodo}`);
 
   // Município = união dos 96 distritos (WGS84).
-  const districts: District[] = readGeoSampa('distritos').map((f) => ({ geometry: f.geometry, bbox: bboxOf(f.geometry) }));
+  const distritosGeo = readGeoSampa<{ nm_distrito_municipal: string }>('distritos');
+  const districts: District[] = distritosGeo.map((f) => ({ geometry: f.geometry, bbox: bboxOf(f.geometry) }));
+  const semLoc = new DiagnosticoSemLocalizacao(new Set(distritosGeo.map((f) => normalizeText(f.properties.nm_distrito_municipal))));
   const city = districts.reduce(
     (b, d) => [Math.min(b[0], d.bbox[0]), Math.min(b[1], d.bbox[1]), Math.max(b[2], d.bbox[2]), Math.max(b[3], d.bbox[3])],
     [Infinity, Infinity, -Infinity, -Infinity],
@@ -128,11 +131,11 @@ async function main() {
   });
 
   // Linhas por aba e por mês da ocorrência: revela abas com meses repetidos (BOs contados em dobro).
-  const porAba: { aba: number; linhas: number; porMes: Record<string, number>; datasNaoLidas: string[] }[] = [];
+  const porAba: { aba: number; linhas: number; colunas: string[]; porMes: Record<string, number>; datasNaoLidas: string[] }[] = [];
   let aba = 0;
   for await (const sheet of reader) {
     aba++;
-    const resumoAba = { aba, linhas: 0, porMes: {} as Record<string, number>, datasNaoLidas: [] as string[] };
+    const resumoAba = { aba, linhas: 0, colunas: [] as string[], porMes: {} as Record<string, number>, datasNaoLidas: [] as string[] };
     let boCols: string[] = [];
     porAba.push(resumoAba);
     let cols: Record<string, number> | null = null;
@@ -145,6 +148,8 @@ async function main() {
           const delegacia = header.find((h) => h === 'NOME_DELEGACIA') ?? header.find((h) => h.includes('DELEGACIA') && !h.includes('CIRCUNSCRICAO'));
           boCols = header.includes('NUM_BO') ? ['NUM_BO', 'ANO_BO', delegacia].filter((c): c is string => !!c && header.includes(c)) : [];
           boCols.forEach((c) => colunasDoBo.add(c));
+          resumoAba.colunas = header.filter(Boolean);
+          semLoc.usarCabecalho(header);
           console.log(`Aba ${aba}: cabeçalho na linha ${row.number}; duplicados por ${boCols.length ? boCols.join(' + ') : '— (sem NUM_BO, não verifica)'}`);
         }
         continue;
@@ -161,6 +166,8 @@ async function main() {
       const lng = toNumber(values[cols.LONGITUDE]);
       if (!Number.isFinite(lat) || !Number.isFinite(lng) || lat === 0 || lng === 0) {
         stats.semLocalizacao++;
+        const txt = (c: string | undefined) => (c && cols![c] !== undefined ? cellText(values[cols![c]]) : '');
+        semLoc.registrar(classifyCrime(txt('RUBRICA'), txt('NATUREZA_APURADA')), txt(semLoc.cidade), txt('BAIRRO'), txt('DESCR_TIPOLOCAL'));
         continue;
       }
       if (!insideCity(lat, lng)) {
@@ -233,6 +240,7 @@ async function main() {
     porAba,
     mesesRepetidosEntreAbas: mesesRepetidos,
     duplicadosVerificadosPor: [...colunasDoBo],
+    semLocalizacao_diagnostico: semLoc.resumo(),
     porCategoria,
     pesos: CRIME_WEIGHTS,
     cortesDeNivel_pesoPorKm2: breaks.map((b) => Number(b.toFixed(2))),
@@ -256,6 +264,12 @@ async function main() {
         : `⚠ ATENÇÃO: os meses ${mesesRepetidos.join(', ')} aparecem em mais de uma aba e a planilha não tem NUM_BO — os BOs podem estar duplicados. Não grave antes de conferir.`,
     );
   console.log('Por categoria:', porCategoria);
+  const diag = report.semLocalizacao_diagnostico;
+  console.log(
+    `Sem localização: ${diag.daCapital} da capital (coluna de cidade: ${diag.colunaDeCidade ?? 'não encontrada'}); ` +
+      `estupro na capital: ${diag.daCapitalPorCategoria.estupro ?? 0}, bairro casa com distrito: ` +
+      `${diag.bairroCasaComNomeDeDistrito.estupro?.sim ?? 0} de ${diag.daCapitalPorCategoria.estupro ?? 0}`,
+  );
   console.log('Cortes de nível (peso/km²):', report.cortesDeNivel_pesoPorKm2);
   for (const r of RESOLUTIONS) console.log(`Resolução ${r}: ${report.hexagonos[r].total} hexágonos, por nível 1..5 = ${niveis[r].join(' / ')}`);
   console.log(`Relatório completo: ${reportFile}`);
