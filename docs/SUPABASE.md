@@ -18,6 +18,7 @@ supabase/
 |---|---|
 | `20261110005609_esquema_inicial` | PostGIS no schema `extensions`; tabelas `subprefectures`, `districts`, `hex_cells` (SRID 4326, índices GIST); RLS com leitura pública e sem escrita pelo cliente |
 | `20261110005703_funcoes_mapa` | Funções `hexagons_in_view` e `locate_point` (security invoker, `search_path` vazio) |
+| `20261110012322_resolucao_dinamica` | As duas funções passam a receber a resolução H3 (`res`, padrão 8) |
 
 A extensão `h3` **não** está disponível no projeto (só PostGIS 3.3.7). Os índices H3 e os polígonos dos
 hexágonos são calculados no script de importação com `h3-js` e gravados em `hex_cells`.
@@ -34,21 +35,25 @@ insert/update/delete (testado: `permission denied for table hex_cells`).
 ### Funções (chamar com `supabase.rpc`)
 
 ```ts
-// Hexágonos no retângulo visível (max_cells opcional, padrão 5000, teto 20000)
-supabase.rpc('hexagons_in_view', { min_lng, min_lat, max_lng, max_lat, max_cells: 5000 })
+// Hexágonos no retângulo visível, na resolução pedida (7, 8 ou 9; max_cells opcional, padrão 5000, teto 20000)
+supabase.rpc('hexagons_in_view', { min_lng, min_lat, max_lng, max_lat, res: 8, max_cells: 5000 })
 // → [{ h3_index, level, score, geometry /* GeoJSON Polygon */ }]
 
 // Onde estou: distrito, subprefeitura e hexágono (sempre 1 linha; campos nulos fora de SP ou sem hexágono)
-supabase.rpc('locate_point', { lat, lng })
+supabase.rpc('locate_point', { lat, lng, res: 8 })
 // → [{ district_id, district_name, subprefecture_id, subprefecture_name, h3_index, level, score }]
 ```
+
+### Zoom dinâmico
+`hex_cells` guarda as resoluções 7 (≈ 5,2 km² por hexágono, 373 em SP), 8 (≈ 0,74 km², 2.278) e 9 (≈ 0,11 km², 14.985).
+Sugestão para o app (Fase 3), pelo `latitudeDelta` da região do mapa: `> 0,15` → 7; `0,04–0,15` → 8; `< 0,04` → 9.
 
 ## Auth
 
 ### Feito no `config.toml` (stack local)
 `enable_anonymous_sign_ins = true`, `enable_manual_linking = true`, limite de 30 logins anônimos/hora por IP.
 
-### A fazer no painel (projeto remoto) — **pendente, precisa ser feito por você**
+### No painel (projeto remoto) — feito pelo dono em 10/11/2026
 O MCP do Supabase não altera configurações de Auth. No painel do projeto `grad`:
 
 1. **Authentication → Sign In / Providers** (ou *Settings* da seção Auth):

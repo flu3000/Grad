@@ -9,6 +9,7 @@ de boletins de ocorrência da SSP-SP. Projeto pessoal; idioma do código e dos c
 ## Monorepo
 - `apps/mobile` — Expo SDK 54, React Native 0.81, React 19.1, TypeScript, styled-components (tema em
   `src/theme/colors.js`), react-native-maps, expo-location, axios. Entrada: `index.js` → `App.tsx`.
+- `scripts` — ingestão local (TypeScript + tsx): GeoSampa e SSP-SP → Supabase. Pesos em `scripts/src/config/crimeWeights.ts`.
 - `apps/api` — Express 5 + Mongoose 9 (código legado). **Será substituído pelo Supabase** (Postgres + PostGIS +
   Supabase Auth, região sa-east-1), conforme `docs/DECISAO_BACKEND.md`. Não evoluir o Express; o Railway foi abandonado.
 - Cada app tem seu próprio `package.json` e `package-lock.json` (não há npm workspaces de propósito:
@@ -22,6 +23,7 @@ de boletins de ocorrência da SSP-SP. Projeto pessoal; idioma do código e dos c
 
 ## Comandos
 - Instalar: `npm run install:all` (ou `npm ci` dentro de cada app)
+- Dados (com `scripts/.env`): `npm run data:import-geo` e `npm run data:import-crimes` (simulam; `-- --gravar` grava)
 - API: `npm run api:dev` | build: `npm run api:build` | importar mapas: `npm run api:import-geo`
 - Mobile: `npm run mobile:start` (validar deps nativas com `npx expo install --check` em `apps/mobile`)
 - Checagem de tipos (rodar antes de todo commit): `npm run typecheck`
@@ -49,8 +51,9 @@ de boletins de ocorrência da SSP-SP. Projeto pessoal; idioma do código e dos c
 - Para dependências nativas no app, use `npx expo install <pacote>` (escolhe a versão compatível com o SDK).
 
 ## Estado atual e próximos passos
-Fases 0 e 1 concluídas (falta só ligar login anônimo e manual linking no painel — ver `docs/SUPABASE.md`).
-Projeto Supabase `grad` (ref `snuxiwwvlaryggezcezi`, sa-east-1). Sem extensão `h3`: hexágonos calculados com `h3-js`.
-Próxima: Fase 2 (scripts de importação). A planilha da SSP-SP não está no ambiente da nuvem.
+Fases 0 e 1 concluídas. Projeto Supabase `grad` (ref `snuxiwwvlaryggezcezi`, sa-east-1); login anônimo e
+manual linking ligados. Sem extensão `h3`: hexágonos calculados com `h3-js`, resoluções 7/8/9 (zoom dinâmico).
+Fase 2 em andamento: `scripts/importGeo.ts` e `scripts/importCrimes.ts` prontos e testados com dados sintéticos;
+falta o dono rodá-los no computador dele (a planilha da SSP-SP não está no ambiente da nuvem) — ver `scripts/README.md`.
 Ver `docs/DIAGNOSTICO.md` (bugs conhecidos), `docs/DECISAO_BACKEND.md` (por que Supabase) e
 `docs/PROMPT_CONTINUIDADE.md` (roadmap).

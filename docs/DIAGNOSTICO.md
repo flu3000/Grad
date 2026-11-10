@@ -94,6 +94,17 @@ funcionando no app.
   `subprefectures`, `districts`, `hex_cells` com RLS (leitura pública, escrita bloqueada) e as funções
   `hexagons_in_view` e `locate_point`. Advisors de segurança sem avisos. Detalhes em `docs/SUPABASE.md`.
 - Extensão `h3` indisponível no Supabase: H3 será calculado no script com `h3-js`.
-- **Pendente:** ligar *anonymous sign-ins* e *manual linking* no painel (o MCP não altera Auth).
+- Login anônimo e manual linking ligados no painel pelo dono.
 - **Pendente:** a planilha da SSP-SP não existe no ambiente da nuvem; a importação de crimes (Fase 2.2)
   precisa rodar onde o arquivo estiver, ou o arquivo precisa ser disponibilizado.
+
+## Atualização — 10/11/2026 (Fase 2, parte 1)
+
+- Pacote `scripts/` com `importGeo.ts` e `importCrimes.ts` (streaming com exceljs, filtro por distrito, H3 com h3-js).
+  Testado com planilha sintética de 40 mil linhas (4 s); a real tem ~1,16 mi, estimativa de 1–3 min.
+- Pesos aprovados (estupro 9; roubo de veículo/carga 6). Classificação por regras em ordem; o relatório lista
+  os textos que caíram em "outros" para revisão antes de gravar.
+- Nível 1..5 por quintis do peso/km² na resolução 8, com os mesmos cortes nas resoluções 7 e 9.
+  **Reavaliar com os dados reais:** na resolução 9, poucos BOs por hexágono podem deixar o mapa "pipocado".
+- Normalização por população: não usada na cor do mapa (ver justificativa no histórico da sessão e em
+  `scripts/README.md`); candidata a informação complementar por distrito na aba Área.

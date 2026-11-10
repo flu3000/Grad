@@ -17,6 +17,7 @@ Grad/
 ├── apps/
 │   ├── mobile/   App React Native + Expo SDK 54 (TypeScript, styled-components, react-native-maps)
 │   └── api/      API legada Express + MongoDB (será substituída pelo Supabase)
+├── scripts/      Importação local de distritos e BOs para o Supabase (ver scripts/README.md)
 ├── supabase/     Configuração do CLI e migrations SQL (esquema, RLS, funções do mapa)
 ├── docs/
 │   ├── DIAGNOSTICO.md           Situação atual, bugs e riscos encontrados
