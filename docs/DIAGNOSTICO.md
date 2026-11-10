@@ -126,3 +126,8 @@ funcionando no app.
 - Estupro sem coordenada: proposta de distribuir o peso pela área do distrito (não no centroide, para não criar
   mancha falsa num hexágono), contando só local público. O relatório agora traz `semLocalizacao_diagnostico`
   (cidade, categoria, se o BAIRRO casa com um distrito, tipo de local) para decidir com os dados reais.
+- Segundo relatório real: a planilha **não tem `NUM_BO`** (não dá para deduplicar por número). As abas são divididas pela
+  data de registro (1º e 2º semestre de 2025) e trazem ocorrências antigas (desde 2005) e algumas de 2026. Agora, por padrão,
+  só contam ocorrências dentro do período (`--todas-as-datas` desliga). O aviso de duplicação foi recalibrado (só meses com
+  ≥ 1% das linhas e divididos ≥ 25% entre abas). Sem coordenada na capital: 87.765 BOs, 2.925 estupros (64% com bairro
+  igual a nome de distrito).

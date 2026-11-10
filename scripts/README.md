@@ -43,7 +43,7 @@ revisar) e ajuste `src/config/crimeWeights.ts` se algum crime grave estiver cain
 npm run data:import-crimes -- --gravar
 ```
 
-Opções: `--arquivo=caminho.xlsx`, `--periodo=2025`. Para ver a pilha de um erro: `DEBUG=1`.
+Opções: `--arquivo=caminho.xlsx`, `--periodo=2025` (só conta ocorrências desse ano; `--todas-as-datas` desliga o filtro). Para ver a pilha de um erro: `DEBUG=1`.
 
 ## Como a nota é calculada
 

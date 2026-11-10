@@ -4,7 +4,7 @@
  *
  *   npm run import:crimes                     → relatório (não grava): categorias, textos sem regra, níveis
  *   npm run import:crimes -- --gravar         → grava (upsert) em public.hex_cells
- *   Opções: --arquivo=caminho.xlsx  --periodo=2025
+ *   Opções: --arquivo=caminho.xlsx  --periodo=2025  --todas-as-datas (não descarta ocorrências fora do período)
  */
 import fs from 'fs';
 import path from 'path';
@@ -86,6 +86,9 @@ function defaultSpreadsheet(): string {
 async function main() {
   const gravar = arg('gravar') === 'true';
   const periodo = arg('periodo') ?? '2025';
+  // A planilha é por data de REGISTRO; traz crimes antigos registrados no ano (até de 2005). Por padrão só
+  // contam ocorrências dentro do período (ano); data ausente/ilegível é mantida.
+  const filtrarPeriodo = arg('todas-as-datas') !== 'true' && /^\d{4}$/.test(periodo);
   const arquivo = arg('arquivo') ?? defaultSpreadsheet();
   console.log(`Planilha: ${arquivo}\nPeríodo: ${periodo}`);
 
@@ -114,7 +117,7 @@ async function main() {
           grid.get(res)!.add(h);
 
   const agg = newAggregation();
-  const stats = { linhas: 0, semLocalizacao: 0, foraDoMunicipio: 0, duplicadas: 0, validas: 0 };
+  const stats = { linhas: 0, foraDoPeriodo: 0, semLocalizacao: 0, foraDoMunicipio: 0, duplicadas: 0, validas: 0 };
   // Duplicados: o mesmo BO (número + ano + delegacia) com a mesma categoria conta uma vez só,
   // mesmo que apareça em mais de uma aba ou em mais de uma linha.
   const vistos = new Set<string>();
@@ -162,6 +165,10 @@ async function main() {
         const bruto = JSON.stringify(values[cols.DATA_OCORRENCIA_BO] ?? null);
         if (!resumoAba.datasNaoLidas.includes(bruto)) resumoAba.datasNaoLidas.push(bruto);
       }
+      if (filtrarPeriodo && mes !== '?' && !mes.startsWith(periodo)) {
+        stats.foraDoPeriodo++;
+        continue;
+      }
       const lat = toNumber(values[cols.LATITUDE]);
       const lng = toNumber(values[cols.LONGITUDE]);
       if (!Number.isFinite(lat) || !Number.isFinite(lng) || lat === 0 || lng === 0) {
@@ -198,11 +205,12 @@ async function main() {
   }
   if (!stats.linhas) throw new Error('Nenhuma linha de dados encontrada.');
 
-  // Mês que aparece com volume relevante (>5% do mês) em mais de uma aba = provável duplicação.
+  // Provável duplicação: mês com volume relevante (≥ 1% das linhas) dividido de forma parecida entre abas
+  // (a segunda aba com ≥ 25% do mês). Registro tardio na virada de semestre e crimes antigos não disparam.
   const mesesRepetidos = [...new Set(porAba.flatMap((a) => Object.keys(a.porMes)))].filter((mes) => {
-    const contagens = porAba.map((a) => a.porMes[mes] ?? 0);
+    const contagens = porAba.map((a) => a.porMes[mes] ?? 0).sort((a, b) => b - a);
     const total = contagens.reduce((x, y) => x + y, 0);
-    return mes !== '?' && contagens.filter((c) => c > total * 0.05).length > 1;
+    return mes !== '?' && total >= stats.linhas * 0.01 && (contagens[1] ?? 0) >= total * 0.25;
   });
 
   // Nota = densidade ponderada (pesos/km²); níveis pelos quintis da resolução de referência.
@@ -251,17 +259,25 @@ async function main() {
   const reportFile = path.join(outDir, `relatorio_crimes_${periodo}.json`);
   fs.writeFileSync(reportFile, JSON.stringify(report, null, 2));
 
-  console.log(`\nLinhas: ${stats.linhas} | sem localização: ${stats.semLocalizacao} | fora do município: ${stats.foraDoMunicipio} | duplicadas: ${stats.duplicadas} | válidas: ${stats.validas}`);
-  for (const a of porAba)
+  console.log(`\nLinhas: ${stats.linhas} | sem localização: ${stats.semLocalizacao} | fora do município: ${stats.foraDoMunicipio} | ocorrência fora de ${periodo}: ${stats.foraDoPeriodo} | duplicadas: ${stats.duplicadas} | válidas: ${stats.validas}`);
+  for (const a of porAba) {
+    if (!a.linhas) continue;
+    const meses = Object.keys(a.porMes).filter((m) => m !== '?').sort();
+    const soma = (f: (m: string) => boolean) => meses.filter(f).reduce((n, m) => n + a.porMes[m], 0);
+    const doPeriodo = meses.filter((m) => m.startsWith(periodo));
     console.log(
-      `Aba ${a.aba}: ${a.linhas} linhas, meses ${Object.keys(a.porMes).sort().join(', ')}` +
-        (a.datasNaoLidas.length ? ` | exemplos de data não lida: ${a.datasNaoLidas.join(' ')}` : ''),
+      `Aba ${a.aba}: ${a.linhas} linhas | ocorrência no período: ${soma((m) => m.startsWith(periodo))} ` +
+        `(${doPeriodo[0] ?? '-'} a ${doPeriodo[doPeriodo.length - 1] ?? '-'}) | antes: ${soma((m) => m < periodo)} | ` +
+        `depois: ${soma((m) => m > periodo && !m.startsWith(periodo))} | sem data: ${a.porMes['?'] ?? 0}` +
+        (a.datasNaoLidas.length ? ` (ex.: ${a.datasNaoLidas.join(' ')})` : ''),
     );
+    console.log(`  colunas: ${a.colunas.join(', ')}`);
+  }
   if (mesesRepetidos.length)
     console.log(
       colunasDoBo.size
         ? `Meses presentes em mais de uma aba: ${mesesRepetidos.join(', ')} (normal: a data é a da ocorrência; duplicados já removidos pelo número do BO).`
-        : `⚠ ATENÇÃO: os meses ${mesesRepetidos.join(', ')} aparecem em mais de uma aba e a planilha não tem NUM_BO — os BOs podem estar duplicados. Não grave antes de conferir.`,
+        : `⚠ ATENÇÃO: os meses ${mesesRepetidos.sort().join(', ')} estão divididos entre abas e a planilha não tem NUM_BO — os BOs podem estar duplicados. Não grave antes de conferir.`,
     );
   console.log('Por categoria:', porCategoria);
   const diag = report.semLocalizacao_diagnostico;
@@ -270,6 +286,11 @@ async function main() {
       `estupro na capital: ${diag.daCapitalPorCategoria.estupro ?? 0}, bairro casa com distrito: ` +
       `${diag.bairroCasaComNomeDeDistrito.estupro?.sim ?? 0} de ${diag.daCapitalPorCategoria.estupro ?? 0}`,
   );
+  const lista = (xs: [string, number][]) => xs.map(([k, n]) => `${k} (${n})`).join('; ');
+  console.log(`  por categoria: ${lista(Object.entries(diag.daCapitalPorCategoria) as [string, number][])}`);
+  console.log(`  estupro por tipo de local: ${lista(diag.estupro_tipoDeLocal)}`);
+  console.log(`  estupro, bairros que não casam com distrito (top 15): ${lista(diag.estupro_bairrosQueNaoCasam_top30.slice(0, 15))}`);
+  console.log(`Textos que caíram em "outros" (top 10): ${lista(report.textosEmOutros_top50.slice(0, 10))}`);
   console.log('Cortes de nível (peso/km²):', report.cortesDeNivel_pesoPorKm2);
   for (const r of RESOLUTIONS) console.log(`Resolução ${r}: ${report.hexagonos[r].total} hexágonos, por nível 1..5 = ${niveis[r].join(' / ')}`);
   console.log(`Relatório completo: ${reportFile}`);
