@@ -137,3 +137,14 @@ funcionando no app.
   com coordenada (os distribuídos tinham baixado o 1º corte de ~80 para 12); "local público" restrito a espaços de
   circulação (sem escola, saúde, templo, repartição); apreensão/mandado → peso 0; "Centro Histórico" → Sé.
   Bairros menores (Jardim Colina, Vila Fanton…) não casam com distrito: precisaria de tabela bairro → distrito.
+
+## Atualização — 10/11/2026 (Fase 2: dados gravados e conferidos)
+
+- `hex_cells`: 373 / 2.278 / 14.985 hexágonos (res. 7 / 8 / 9), 373.639 BOs com coordenada e 282 estupros distribuídos
+  em cada resolução, período 2025, nenhuma geometria inválida. Níveis idênticos aos do relatório.
+- `locate_point` (como `anon`): Sé, Paulista, Luz e Largo 13 → nível 5; Cantareira → 1; Guarulhos → nulo (fora de SP);
+  distrito e subprefeitura corretos em todos os pontos testados.
+- `hexagons_in_view`: cidade inteira na res. 7 = 372 hexágonos (~79 KB de GeoJSON) em ~45 ms.
+- Advisors: segurança sem avisos; performance só `unused_index` no índice da FK `districts.subprefecture_id` (mantido).
+- **Para avaliar na Fase 3:** o nível 5 junta scores de ~900 a ~10.000 peso/km² (Sé ≈ 6.400, Cidade Tiradentes ≈ 970).
+  Se o mapa ficar pouco informativo no centro, dá para usar o `score` para variar a intensidade dentro do nível 5.
