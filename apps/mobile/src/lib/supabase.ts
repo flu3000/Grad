@@ -1,6 +1,6 @@
-import 'react-native-get-random-values';
 import { AppState, Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as Crypto from 'expo-crypto';
 import * as SecureStore from 'expo-secure-store';
 import * as aesjs from 'aes-js';
 import { createClient } from '@supabase/supabase-js';
@@ -8,11 +8,12 @@ import { createClient } from '@supabase/supabase-js';
 /**
  * Armazenamento da sessão conforme o guia oficial do Supabase para Expo ("LargeSecureStore"):
  * o SecureStore só aceita valores de até 2048 bytes, então uma chave AES-256 fica no SecureStore
- * e a sessão vai criptografada para o AsyncStorage.
+ * e a sessão vai criptografada para o AsyncStorage. Os bytes aleatórios vêm do expo-crypto (incluído no Expo Go),
+ * no lugar do react-native-get-random-values do guia, que não faz parte do Expo Go a partir do SDK 58.
  */
 class LargeSecureStore {
   private async encrypt(key: string, value: string) {
-    const encryptionKey = crypto.getRandomValues(new Uint8Array(256 / 8));
+    const encryptionKey = Crypto.getRandomValues(new Uint8Array(256 / 8));
     const cipher = new aesjs.ModeOfOperation.ctr(encryptionKey, new aesjs.Counter(1));
     const encryptedBytes = cipher.encrypt(aesjs.utils.utf8.toBytes(value));
     await SecureStore.setItemAsync(key, aesjs.utils.hex.fromBytes(encryptionKey));
