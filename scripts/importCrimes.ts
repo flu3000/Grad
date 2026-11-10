@@ -111,7 +111,11 @@ async function main() {
           grid.get(res)!.add(h);
 
   const agg = newAggregation();
-  const stats = { linhas: 0, semLocalizacao: 0, foraDoMunicipio: 0, validas: 0 };
+  const stats = { linhas: 0, semLocalizacao: 0, foraDoMunicipio: 0, duplicadas: 0, validas: 0 };
+  // Duplicados: o mesmo BO (número + ano + delegacia) com a mesma categoria conta uma vez só,
+  // mesmo que apareça em mais de uma aba ou em mais de uma linha.
+  const vistos = new Set<string>();
+  const colunasDoBo = new Set<string>();
   const porCategoria: Partial<Record<CrimeCategory, number>> = {};
   const textosOutros = new Map<string, number>();
 
@@ -124,11 +128,12 @@ async function main() {
   });
 
   // Linhas por aba e por mês da ocorrência: revela abas com meses repetidos (BOs contados em dobro).
-  const porAba: { aba: number; linhas: number; porMes: Record<string, number> }[] = [];
+  const porAba: { aba: number; linhas: number; porMes: Record<string, number>; datasNaoLidas: string[] }[] = [];
   let aba = 0;
   for await (const sheet of reader) {
     aba++;
-    const resumoAba = { aba, linhas: 0, porMes: {} as Record<string, number> };
+    const resumoAba = { aba, linhas: 0, porMes: {} as Record<string, number>, datasNaoLidas: [] as string[] };
+    let boCols: string[] = [];
     porAba.push(resumoAba);
     let cols: Record<string, number> | null = null;
     for await (const row of sheet) {
@@ -137,7 +142,10 @@ async function main() {
         const header = Array.from(values, (v) => normalizeText(cellText(v))); // row.values é esparso (começa no índice 1)
         if (REQUIRED.every((c) => header.includes(c))) {
           cols = Object.fromEntries(header.map((h, i) => [h, i]));
-          console.log(`Aba ${aba}: cabeçalho na linha ${row.number}`);
+          const delegacia = header.find((h) => h === 'NOME_DELEGACIA') ?? header.find((h) => h.includes('DELEGACIA') && !h.includes('CIRCUNSCRICAO'));
+          boCols = header.includes('NUM_BO') ? ['NUM_BO', 'ANO_BO', delegacia].filter((c): c is string => !!c && header.includes(c)) : [];
+          boCols.forEach((c) => colunasDoBo.add(c));
+          console.log(`Aba ${aba}: cabeçalho na linha ${row.number}; duplicados por ${boCols.length ? boCols.join(' + ') : '— (sem NUM_BO, não verifica)'}`);
         }
         continue;
       }
@@ -145,6 +153,10 @@ async function main() {
       resumoAba.linhas++;
       const mes = cols.DATA_OCORRENCIA_BO !== undefined ? monthOf(values[cols.DATA_OCORRENCIA_BO]) : '?';
       resumoAba.porMes[mes] = (resumoAba.porMes[mes] ?? 0) + 1;
+      if (mes === '?' && resumoAba.datasNaoLidas.length < 10) {
+        const bruto = JSON.stringify(values[cols.DATA_OCORRENCIA_BO] ?? null);
+        if (!resumoAba.datasNaoLidas.includes(bruto)) resumoAba.datasNaoLidas.push(bruto);
+      }
       const lat = toNumber(values[cols.LATITUDE]);
       const lng = toNumber(values[cols.LONGITUDE]);
       if (!Number.isFinite(lat) || !Number.isFinite(lng) || lat === 0 || lng === 0) {
@@ -158,6 +170,14 @@ async function main() {
       const rubrica = cellText(values[cols.RUBRICA]);
       const natureza = cellText(values[cols.NATUREZA_APURADA]);
       const category = classifyCrime(rubrica, natureza);
+      if (boCols.length) {
+        const chave = `${boCols.map((c) => cellText(values[cols![c]]).trim()).join('|')}|${category}`;
+        if (vistos.has(chave)) {
+          stats.duplicadas++;
+          continue;
+        }
+        vistos.add(chave);
+      }
       porCategoria[category] = (porCategoria[category] ?? 0) + 1;
       if (category === 'outros') {
         const key = normalizeText(`${rubrica} | ${natureza}`);
@@ -212,6 +232,7 @@ async function main() {
     ...stats,
     porAba,
     mesesRepetidosEntreAbas: mesesRepetidos,
+    duplicadosVerificadosPor: [...colunasDoBo],
     porCategoria,
     pesos: CRIME_WEIGHTS,
     cortesDeNivel_pesoPorKm2: breaks.map((b) => Number(b.toFixed(2))),
@@ -222,10 +243,18 @@ async function main() {
   const reportFile = path.join(outDir, `relatorio_crimes_${periodo}.json`);
   fs.writeFileSync(reportFile, JSON.stringify(report, null, 2));
 
-  console.log(`\nLinhas: ${stats.linhas} | sem localização: ${stats.semLocalizacao} | fora do município: ${stats.foraDoMunicipio} | válidas: ${stats.validas}`);
-  for (const a of porAba) console.log(`Aba ${a.aba}: ${a.linhas} linhas, meses ${Object.keys(a.porMes).sort().join(', ')}`);
+  console.log(`\nLinhas: ${stats.linhas} | sem localização: ${stats.semLocalizacao} | fora do município: ${stats.foraDoMunicipio} | duplicadas: ${stats.duplicadas} | válidas: ${stats.validas}`);
+  for (const a of porAba)
+    console.log(
+      `Aba ${a.aba}: ${a.linhas} linhas, meses ${Object.keys(a.porMes).sort().join(', ')}` +
+        (a.datasNaoLidas.length ? ` | exemplos de data não lida: ${a.datasNaoLidas.join(' ')}` : ''),
+    );
   if (mesesRepetidos.length)
-    console.log(`⚠ ATENÇÃO: os meses ${mesesRepetidos.join(', ')} aparecem em mais de uma aba — os BOs podem estar duplicados. Não grave antes de conferir.`);
+    console.log(
+      colunasDoBo.size
+        ? `Meses presentes em mais de uma aba: ${mesesRepetidos.join(', ')} (normal: a data é a da ocorrência; duplicados já removidos pelo número do BO).`
+        : `⚠ ATENÇÃO: os meses ${mesesRepetidos.join(', ')} aparecem em mais de uma aba e a planilha não tem NUM_BO — os BOs podem estar duplicados. Não grave antes de conferir.`,
+    );
   console.log('Por categoria:', porCategoria);
   console.log('Cortes de nível (peso/km²):', report.cortesDeNivel_pesoPorKm2);
   for (const r of RESOLUTIONS) console.log(`Resolução ${r}: ${report.hexagonos[r].total} hexágonos, por nível 1..5 = ${niveis[r].join(' / ')}`);

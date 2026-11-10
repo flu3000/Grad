@@ -47,7 +47,8 @@ Opções: `--arquivo=caminho.xlsx`, `--periodo=2025`. Para ver a pilha de um err
 
 ## Como a nota é calculada
 
-1. Descarta linhas com lat/lng ausente ou 0 (localização sigilosa) e pontos fora dos 96 distritos.
+1. Descarta linhas com lat/lng ausente ou 0 (localização sigilosa), pontos fora dos 96 distritos e duplicados
+   (mesmo `NUM_BO` + `ANO_BO` + delegacia com a mesma categoria conta uma vez, mesmo em abas diferentes).
 2. Classifica cada BO pela primeira regra de `src/config/crimeWeights.ts` que casar com `RUBRICA | NATUREZA_APURADA`.
 3. Soma os pesos por hexágono H3 nas resoluções 7, 8 e 9 e divide pela área do hexágono → **score = peso/km²**.
 4. **Nível 1..5:** hexágono sem ocorrência = 1; os demais pelos quintis do score na resolução 8. Os mesmos cortes

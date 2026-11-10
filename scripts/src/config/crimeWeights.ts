@@ -1,6 +1,7 @@
 /**
  * Pesos por tipo de crime, usados para calcular a nota de perigo de cada hexágono.
- * Aprovados pelo dono do projeto em 10/11/2026.
+ * Aprovados pelo dono do projeto em 10/11/2026. Extorsão mediante sequestro, porte de arma, tráfico e
+ * culposos adicionados depois do primeiro relatório com a planilha real (aguardando aprovação).
  *
  * As regras são testadas EM ORDEM contra o texto `RUBRICA | NATUREZA_APURADA` normalizado
  * (maiúsculas, sem acento); vale a primeira que casar. Por isso as mais específicas vêm antes
@@ -12,6 +13,7 @@ export type CrimeCategory =
   | 'latrocinio'
   | 'homicidio_doloso'
   | 'estupro'
+  | 'extorsao_sequestro'
   | 'lesao_seguida_morte'
   | 'roubo_veiculo'
   | 'roubo_carga'
@@ -19,13 +21,17 @@ export type CrimeCategory =
   | 'lesao_dolosa'
   | 'furto_veiculo'
   | 'furto_outros'
+  | 'porte_arma'
+  | 'trafico'
+  | 'culposo'
   | 'nao_criminal'
   | 'outros';
 
 export const CRIME_WEIGHTS: Record<CrimeCategory, number> = {
   latrocinio: 10,
   homicidio_doloso: 10,
-  estupro: 9,
+  estupro: 9, // a planilha da SSP não traz localização de crimes sexuais: na prática fica zerado
+  extorsao_sequestro: 9,
   lesao_seguida_morte: 8,
   roubo_veiculo: 6,
   roubo_carga: 6,
@@ -33,6 +39,9 @@ export const CRIME_WEIGHTS: Record<CrimeCategory, number> = {
   lesao_dolosa: 3,
   furto_veiculo: 2,
   furto_outros: 1,
+  porte_arma: 3,
+  trafico: 2,
+  culposo: 0, // lesão/homicídio culposo (quase todo de trânsito): não é perigo de crime
   outros: 0.5, // infrações leves e demais crimes
   nao_criminal: 0, // registros que não indicam perigo (perda de documento, desaparecimento, achado...)
 };
@@ -41,15 +50,18 @@ export const CRIME_RULES: [CrimeCategory, RegExp][] = [
   ['nao_criminal', /\b(PERDA|EXTRAVIO|DESAPARECIMENTO|ENCONTRO DE|ACHADO|LOCALIZACAO DE|MORTE SUSPEITA|MORTE NATURAL|SUICIDIO|NAO CRIMINAL|FATO ATIPICO)\b/],
   ['latrocinio', /LATROCINIO|ROUBO SEGUIDO DE MORTE/],
   ['lesao_seguida_morte', /LESAO CORPORAL SEGUIDA DE MORTE/],
-  ['outros', /CULPOS[OA]/], // homicídio/lesão culposa (ex.: trânsito) não indicam perigo intencional
+  ['culposo', /CULPOS[OA]/],
   ['homicidio_doloso', /HOMICIDIO|FEMINICIDIO/],
   ['estupro', /ESTUPRO/],
+  ['extorsao_sequestro', /SEQUESTRO|CARCERE PRIVADO/],
   ['roubo_carga', /ROUBO\b.*\bCARGA/],
   ['roubo_veiculo', /ROUBO\b.*\bVEICULO/],
   ['roubo_outros', /\bROUBO/],
   ['lesao_dolosa', /LESAO CORPORAL/],
   ['furto_veiculo', /FURTO\b.*\bVEICULO/],
   ['furto_outros', /\bFURTO/],
+  ['trafico', /TRAFICO/], // tráfico e associação para o tráfico (porte para consumo continua em "outros")
+  ['porte_arma', /\bARMAS?\b|DESARMAMENTO|10\.?826/], // depois de roubo/lesão: "roubo com arma" segue roubo
 ];
 
 export function normalizeText(text: string): string {
