@@ -1,27 +1,55 @@
-import React from 'react';
-import { ActivityIndicator, Alert } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { ActivityIndicator, Alert, Platform } from 'react-native';
+import * as AppleAuthentication from 'expo-apple-authentication';
 import { useTheme } from 'styled-components/native';
 import Tela_Rolavel from '../../../components/Comum/Tela_Rolavel';
 import * as C from '../../../components/Comum/Tela_Rolavel/styles';
 import { useAuth } from '../../../contexts/Auth_Context';
+import { appleDisponivel, emExpoGo, entrarCom, googleDisponivel, type Provedor } from '../../../lib/loginSocial';
+import * as S from './styles';
 
-/** Conta do usuário: hoje sempre convidado; vincular Google/Apple chega na Fase 3.6. */
+const NOME_PROVEDOR: Record<string, string> = { google: 'Google', apple: 'Apple' };
+
+/** Conta do usuário: convidado por padrão, com opção de vincular Google/Apple (só no app de desenvolvimento/loja). */
 const Perfil = () => {
   const theme = useTheme();
   const { session, carregando, erro, entrarComoConvidado, sair } = useAuth();
+  const [apple, setApple] = useState(false);
+  const [entrando, setEntrando] = useState<Provedor | null>(null);
+
+  useEffect(() => {
+    appleDisponivel().then(setApple);
+  }, []);
+
   const convidado = session?.user.is_anonymous ?? true;
+  const provedores = (session?.user.identities ?? []).map((i) => NOME_PROVEDOR[i.provider]).filter(Boolean);
+
+  const entrar = async (provedor: Provedor) => {
+    setEntrando(provedor);
+    try {
+      const resultado = await entrarCom(provedor);
+      if (resultado === 'vinculado') Alert.alert('Conta vinculada', `Sua conta ${NOME_PROVEDOR[provedor]} foi vinculada.`);
+      if (resultado === 'entrou') Alert.alert('Pronto', `Você entrou com sua conta ${NOME_PROVEDOR[provedor]}.`);
+    } catch (e) {
+      Alert.alert('Não foi possível entrar', e instanceof Error ? e.message : 'Tente de novo em instantes.');
+    } finally {
+      setEntrando(null);
+    }
+  };
 
   const confirmarSaida = () =>
     Alert.alert(
       'Sair',
       convidado
         ? 'Você continuará usando o Grad como um novo convidado. Nada fica salvo na conta de convidado.'
-        : 'Você continuará usando o Grad como convidado.',
+        : 'Você continuará usando o Grad como convidado. Para voltar, entre de novo com a mesma conta.',
       [
         { text: 'Cancelar', style: 'cancel' },
         { text: 'Sair', style: 'destructive', onPress: () => sair() },
       ],
     );
+
+  const algumLogin = googleDisponivel || apple;
 
   return (
     <Tela_Rolavel titulo="Perfil">
@@ -31,11 +59,11 @@ const Perfil = () => {
           <ActivityIndicator color={theme.colors.textPrimary} />
         ) : session ? (
           <>
-            <C.Texto>{convidado ? 'Você está como convidado.' : session.user.email ?? 'Conta vinculada'}</C.Texto>
+            <C.Texto>{convidado ? 'Você está como convidado.' : (session.user.email ?? 'Conta vinculada')}</C.Texto>
             <C.TextoSecundario>
               {convidado
                 ? 'Vincule uma conta para manter seu acesso ao trocar de celular.'
-                : 'Sua conta está vinculada.'}
+                : `Conta vinculada: ${provedores.join(' e ') || 'sim'}.`}
             </C.TextoSecundario>
           </>
         ) : (
@@ -51,13 +79,32 @@ const Perfil = () => {
       {convidado && (
         <C.Secao>
           <C.Subtitulo>Vincular conta</C.Subtitulo>
-          <C.Botao $desativado disabled accessibilityState={{ disabled: true }}>
-            <C.BotaoTexto>Continuar com Google</C.BotaoTexto>
-          </C.Botao>
-          <C.Botao $desativado disabled accessibilityState={{ disabled: true }}>
-            <C.BotaoTexto>Continuar com Apple</C.BotaoTexto>
-          </C.Botao>
-          <C.TextoSecundario style={{ marginTop: 8 }}>Em breve.</C.TextoSecundario>
+          {googleDisponivel && (
+            <C.Botao onPress={() => entrar('google')} disabled={!!entrando} $desativado={!!entrando}>
+              {entrando === 'google' ? (
+                <ActivityIndicator color={theme.colors.primary} />
+              ) : (
+                <C.BotaoTexto>Continuar com Google</C.BotaoTexto>
+              )}
+            </C.Botao>
+          )}
+          {apple && (
+            <S.BotaoApple
+              buttonType={AppleAuthentication.AppleAuthenticationButtonType.CONTINUE}
+              buttonStyle={AppleAuthentication.AppleAuthenticationButtonStyle.WHITE}
+              cornerRadius={12}
+              onPress={() => !entrando && entrar('apple')}
+            />
+          )}
+          {!algumLogin && (
+            <C.TextoSecundario>
+              {emExpoGo
+                ? 'O login com Google e Apple não funciona no Expo Go. Use o app de desenvolvimento do Grad (veja docs/LOGIN_SOCIAL.md).'
+                : Platform.OS === 'ios'
+                  ? 'Login social indisponível neste aparelho.'
+                  : 'Login com Google ainda não configurado neste build.'}
+            </C.TextoSecundario>
+          )}
         </C.Secao>
       )}
 
