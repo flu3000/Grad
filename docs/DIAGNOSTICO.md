@@ -133,3 +133,7 @@ funcionando no app.
   igual a nome de distrito).
 - Pesos novos aprovados (culposo = 0: crime sem intenção, quase todo de trânsito). Estupro sem coordenada, na capital,
   em local público e com bairro = distrito passa a ser distribuído igualmente pelos hexágonos do distrito.
+- Terceiro relatório real: 418 estupros distribuídos pelos distritos. Ajustes: cortes de nível calculados só com BOs
+  com coordenada (os distribuídos tinham baixado o 1º corte de ~80 para 12); "local público" restrito a espaços de
+  circulação (sem escola, saúde, templo, repartição); apreensão/mandado → peso 0; "Centro Histórico" → Sé.
+  Bairros menores (Jardim Colina, Vila Fanton…) não casam com distrito: precisaria de tabela bairro → distrito.

@@ -8,13 +8,15 @@ export const REFERENCE_RESOLUTION = 8;
 
 export interface CellStats {
   weight: number;
+  /** Só o peso dos BOs com coordenada (usado para calcular os cortes de nível). */
+  pointWeight: number;
   total: number;
   byCategory: Partial<Record<CrimeCategory, number>>;
   /** Fração de BOs sem coordenada distribuídos pelo distrito (ver addDistributed). */
   distributed: Partial<Record<CrimeCategory, number>>;
 }
 
-const emptyStats = (): CellStats => ({ weight: 0, total: 0, byCategory: {}, distributed: {} });
+const emptyStats = (): CellStats => ({ weight: 0, pointWeight: 0, total: 0, byCategory: {}, distributed: {} });
 
 export type Aggregation = Map<number, Map<string, CellStats>>;
 
@@ -29,6 +31,7 @@ export function addOccurrence(agg: Aggregation, lat: number, lng: number, catego
     let s = cells.get(h);
     if (!s) cells.set(h, (s = emptyStats()));
     s.weight += weight;
+    s.pointWeight += weight;
     s.total += 1;
     s.byCategory[category] = (s.byCategory[category] ?? 0) + 1;
   }
@@ -56,6 +59,14 @@ export function density(h3: string, stats: CellStats | undefined): number {
   return stats ? stats.weight / cellArea(h3, 'km2') : 0;
 }
 
+/**
+ * Densidade só dos BOs com coordenada, base dos cortes de nível. Sem isso, hexágonos que só recebem uma
+ * fração de estupro distribuído (nota quase zero) entrariam nos quintis e puxariam a cidade inteira para cima.
+ */
+export function pointDensity(h3: string, stats: CellStats | undefined): number {
+  return stats ? stats.pointWeight / cellArea(h3, 'km2') : 0;
+}
+
 /** Quantil por interpolação linear de uma lista já ordenada. */
 export function quantile(sorted: number[], q: number): number {
   if (!sorted.length) return 0;
@@ -66,7 +77,8 @@ export function quantile(sorted: number[], q: number): number {
 }
 
 /**
- * Cortes dos níveis 1..5: quintis da densidade dos hexágonos COM ocorrência na resolução de referência.
+ * Cortes dos níveis 1..5: quintis da densidade (BOs com coordenada) dos hexágonos COM ocorrência na resolução
+ * de referência.
  * Usar os mesmos cortes (em ocorrências ponderadas/km²) em todas as resoluções mantém a cor de um lugar
  * coerente quando o zoom muda.
  */

@@ -7,10 +7,17 @@ import { normalizeText, type CrimeCategory } from '../config/crimeWeights';
  */
 const CAPITAL = /^(S\.? ?PAULO|SAO PAULO)$/;
 
-// Locais onde o crime indica perigo para quem circula. Residência, condomínio, hotel etc. ficam de fora.
-// Lista por inclusão (conservadora): tipos não listados não contam; o relatório mostra o que ficou de fora.
+// Espaços de circulação, onde o crime indica perigo para quem passa. Ficam de fora residência, condomínio
+// residencial, hospedagem e também ambientes institucionais (escola, saúde, templo, repartição), onde o caso
+// costuma envolver alguém de dentro. Lista por inclusão: tipos não listados não contam (o relatório mostra quais).
 const LOCAL_PUBLICO =
-  /VIA PUBLICA|\bRUA\b|AVENIDA|CALCADA|PRACA|PARQUE|TRANSPORTE|TERMINAL|ESTACAO|METRO|TREM|ONIBUS|PONTO DE ONIBUS|RODOVIA|ESTRADA|VIADUTO|PASSARELA|TUNEL|COMERCIO|COMERCIAL|LOJA|SHOPPING|MERCADO|BAR\b|RESTAURANTE|ESTACIONAMENTO|AREA NAO OCUPADA|TERRENO BALDIO|MATAGAL|LAZER|ESTABELECIMENTO DE ENSINO|ESCOLA|UNIVERSIDADE|REPARTICAO|SAUDE|HOSPITAL|TEMPLO|IGREJA|EVENTO/;
+  /VIA PUBLICA|\bRUA\b|AVENIDA|CALCADA|PRACA|TRANSPORTE|TERMINAL|ESTACAO|METRO|TREM|ONIBUS|RODOVIA|ESTRADA|VIADUTO|PASSARELA|TUNEL|COMERCIO|COMERCIAL|LOJA|SHOPPING|MERCADO|BAR\b|RESTAURANTE|ESTACIONAMENTO|AREA NAO OCUPADA|TERRENO BALDIO|MATAGAL|LAZER/;
+
+// Nomes de bairro que correspondem a um distrito com outro nome.
+const APELIDOS: Record<string, string> = {
+  'CENTRO HISTORICO DE SAO PAULO': 'SE',
+  CENTRO: 'SE',
+};
 
 // Abreviações comuns no campo BAIRRO, para casar com o nome oficial do distrito.
 const ABREVIACOES: [RegExp, string][] = [
@@ -26,7 +33,8 @@ const ABREVIACOES: [RegExp, string][] = [
 export function normalizarBairro(nome: string): string {
   let n = normalizeText(nome).replace(/[`´'’]/g, '');
   for (const [re, sub] of ABREVIACOES) n = n.replace(re, sub);
-  return n.replace(/[^A-Z0-9 ]/g, ' ').replace(/\s+/g, ' ').trim();
+  n = n.replace(/[^A-Z0-9 ]/g, ' ').replace(/\s+/g, ' ').trim();
+  return APELIDOS[n] ?? n;
 }
 
 export const ehLocalPublico = (tipoLocal: string) => LOCAL_PUBLICO.test(normalizeText(tipoLocal));

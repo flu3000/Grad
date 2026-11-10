@@ -22,6 +22,7 @@ import {
   addDistributed,
   addOccurrence,
   density,
+  pointDensity,
   levelBreaks,
   levelFor,
   newAggregation,
@@ -234,7 +235,7 @@ async function main() {
 
   // Nota = densidade ponderada (pesos/km²); níveis pelos quintis da resolução de referência.
   const refCells = agg.get(REFERENCE_RESOLUTION)!;
-  const breaks = levelBreaks([...refCells].map(([h, s]) => density(h, s)));
+  const breaks = levelBreaks([...refCells].map(([h, s]) => pointDensity(h, s)));
 
   const rows: object[] = [];
   const niveis: Record<number, number[]> = {};

@@ -53,7 +53,8 @@ export const CRIME_WEIGHTS: Record<CrimeCategory, number> = {
 export const DISTRIBUIR_SEM_LOCALIZACAO: CrimeCategory[] = ['estupro'];
 
 export const CRIME_RULES: [CrimeCategory, RegExp][] = [
-  ['nao_criminal', /\b(PERDA|EXTRAVIO|DESAPARECIMENTO|ENCONTRO DE|ACHADO|LOCALIZACAO DE|MORTE SUSPEITA|MORTE NATURAL|SUICIDIO|NAO CRIMINAL|FATO ATIPICO)\b/],
+  ['nao_criminal', /\b(PERDA|EXTRAVIO|DESAPARECIMENTO|ENCONTRO DE|ACHADO|LOCALIZACAO DE|MORTE SUSPEITA|MORTE NATURAL|SUICIDIO|NAO CRIMINAL|FATO ATIPICO)\b|LOCALIZACAO\/APREENSAO|CUMPRIMENTO DE MANDADO/],
+  // ↑ inclui ações da polícia (apreensão, mandado), que não são crime com vítima
   ['latrocinio', /LATROCINIO|ROUBO SEGUIDO DE MORTE/],
   ['lesao_seguida_morte', /LESAO CORPORAL SEGUIDA DE MORTE/],
   ['culposo', /CULPOS[OA]/],
