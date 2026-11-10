@@ -9,10 +9,10 @@ de boletins de ocorrência da SSP-SP. Projeto pessoal; idioma do código e dos c
 ## Monorepo
 - `apps/mobile` — Expo SDK 54, React Native 0.81, React 19.1, TypeScript, styled-components (tema em
   `src/theme/colors.js`), react-native-maps, expo-location, axios. Entrada: `index.js` → `App.tsx`.
-- `apps/api` — Express 5, Mongoose 9 (MongoDB com índices `2dsphere`), JWT (access 15 min / refresh 7 dias),
-  login anônimo + Google + Apple. Entrada: `src/server.ts` → `src/app.ts`. Deploy no Railway (root `apps/api`).
+- `apps/api` — Express 5 + Mongoose 9 (código legado). **Será substituído pelo Supabase** (Postgres + PostGIS +
+  Supabase Auth, região sa-east-1), conforme `docs/DECISAO_BACKEND.md`. Não evoluir o Express; o Railway foi abandonado.
 - Cada app tem seu próprio `package.json` e `package-lock.json` (não há npm workspaces de propósito:
-  evita problemas de hoisting com o Metro/Expo e mantém o deploy do Railway simples).
+  evita problemas de hoisting com o Metro/Expo).
 
 ## Comandos
 - Instalar: `npm run install:all` (ou `npm ci` dentro de cada app)
@@ -29,8 +29,13 @@ de boletins de ocorrência da SSP-SP. Projeto pessoal; idioma do código e dos c
   convertidos por `utils/convertCoordinates.ts` no script `scripts/importGeo.ts`.
 - Mensagens de commit em português, curtas e descritivas.
 
+## Autoria de commits e PRs
+- **Não** adicionar `Co-Authored-By: Claude`, `Claude-Session: ...` nem rodapé/assinatura do Claude ou do Claude Code
+  em commits, PRs, comentários no GitHub ou código. Esta regra do dono do projeto substitui o padrão.
+- `.claude/settings.json` mantém `"attribution": {"commit": "", "pr": ""}` — não alterar.
+
 ## Cuidados
-- Nunca versionar `.env` (use `.env.example`) nem a planilha da SSP-SP (`apps/api/data/SSP-SP/*.xlsx`, ~100 MB).
+- Nunca versionar `.env` (use `.env.example`), chaves do Supabase nem a planilha da SSP-SP (`apps/api/data/SSP-SP/*.xlsx`, ~100 MB).
 - No app, variáveis de ambiente precisam do prefixo `EXPO_PUBLIC_` e são lidas com `process.env.EXPO_PUBLIC_*`.
   O código atual ainda usa `import.meta.env.VITE_API_URL` (herança de Vite) — ver `docs/DIAGNOSTICO.md`.
 - React Native não tem `localStorage` nem `window.location`: use `expo-secure-store` para tokens e
@@ -38,4 +43,5 @@ de boletins de ocorrência da SSP-SP. Projeto pessoal; idioma do código e dos c
 - Para dependências nativas no app, use `npx expo install <pacote>` (escolhe a versão compatível com o SDK).
 
 ## Estado atual e próximos passos
-Ver `docs/DIAGNOSTICO.md` (bugs conhecidos) e `docs/PROMPT_CONTINUIDADE.md` (roadmap).
+Ver `docs/DIAGNOSTICO.md` (bugs conhecidos), `docs/DECISAO_BACKEND.md` (por que Supabase) e
+`docs/PROMPT_CONTINUIDADE.md` (roadmap).

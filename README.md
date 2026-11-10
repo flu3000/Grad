@@ -16,9 +16,10 @@ com base nos boletins de ocorrência (BOs) públicos da SSP-SP.
 Grad/
 ├── apps/
 │   ├── mobile/   App React Native + Expo SDK 54 (TypeScript, styled-components, react-native-maps)
-│   └── api/      API Node.js + Express 5 + MongoDB/Mongoose (TypeScript), deploy no Railway
+│   └── api/      API legada Express + MongoDB (será substituída pelo Supabase)
 ├── docs/
 │   ├── DIAGNOSTICO.md           Situação atual, bugs e riscos encontrados
+│   ├── DECISAO_BACKEND.md       Por que o backend vai para o Supabase
 │   └── PROMPT_CONTINUIDADE.md   Prompt pronto para retomar o projeto com o Claude Code
 ├── CLAUDE.md     Instruções que o Claude Code lê automaticamente em toda sessão
 └── package.json  Atalhos para rodar os dois apps a partir da raiz
@@ -41,7 +42,7 @@ npm run api:dev              # API em http://localhost:3333
 npm run mobile:start         # abre o Expo (QR code para o Expo Go)
 ```
 
-## API — rotas existentes
+## API legada (Express) — rotas existentes até a migração
 
 | Método | Rota | Auth | Descrição |
 |---|---|---|---|
@@ -56,9 +57,9 @@ npm run mobile:start         # abre o Expo (QR code para o Expo Go)
 | GET | `/neighborhoods/getAll` | – | Polígonos de todos os distritos |
 | POST | `/geo/locate` | – | `{lat, lng}` → distrito/subprefeitura |
 
-## Deploy
-A API roda no Railway. Depois da unificação, o serviço do Railway deve apontar para este repositório
-com **Root Directory = `apps/api`** (build `npm run build`, start `npm start`).
+## Backend
+O backend está migrando para o **Supabase** (Postgres + PostGIS + Supabase Auth, região São Paulo), sem servidor
+próprio. O Railway foi abandonado. Detalhes em [docs/DECISAO_BACKEND.md](docs/DECISAO_BACKEND.md).
 
 ## Licença
 MIT — ver [LICENSE](LICENSE).
