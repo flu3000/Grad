@@ -50,7 +50,7 @@ Fase 0 — Configuração do repositório (concluída em 10/11/2026)
 1. Confirme que .claude/settings.json tem a atribuição vazia e que CLAUDE.md contém a regra de autoria.
 2. Confira que CLAUDE.md e README já apontam o Supabase como backend (o Railway foi abandonado).
 
-Fase 1 — Supabase: projeto, esquema e auth
+Fase 1 — Supabase: projeto, esquema e auth (concluída em 10/11/2026; falta ligar anônimo/manual linking no painel)
 1. Projeto: se o MCP do Supabase estiver disponível, liste meus projetos e ME PERGUNTE antes de criar o
    projeto "grad" (região sa-east-1, plano gratuito). Se não estiver, me passe o passo a passo no painel.
 2. Crie a pasta supabase/ na raiz (supabase init) com migrations versionadas: extensão postgis (schema

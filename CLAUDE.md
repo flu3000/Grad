@@ -14,6 +14,12 @@ de boletins de ocorrência da SSP-SP. Projeto pessoal; idioma do código e dos c
 - Cada app tem seu próprio `package.json` e `package-lock.json` (não há npm workspaces de propósito:
   evita problemas de hoisting com o Metro/Expo).
 
+## Supabase
+- `supabase/migrations/*.sql` versionadas com as mesmas versões do projeto remoto; detalhes em `docs/SUPABASE.md`.
+- Tabelas com RLS de leitura pública e sem escrita pelo cliente; funções com `security invoker` e `set search_path = ''`
+  (qualificar tudo: `extensions.st_*`, `public.tabela`).
+- Rodar os advisors (segurança e performance) depois de toda mudança de esquema.
+
 ## Comandos
 - Instalar: `npm run install:all` (ou `npm ci` dentro de cada app)
 - API: `npm run api:dev` | build: `npm run api:build` | importar mapas: `npm run api:import-geo`
@@ -43,6 +49,8 @@ de boletins de ocorrência da SSP-SP. Projeto pessoal; idioma do código e dos c
 - Para dependências nativas no app, use `npx expo install <pacote>` (escolhe a versão compatível com o SDK).
 
 ## Estado atual e próximos passos
-Fase 0 (configuração do repositório) concluída. Próxima: Fase 1 (projeto Supabase, esquema e auth).
+Fases 0 e 1 concluídas (falta só ligar login anônimo e manual linking no painel — ver `docs/SUPABASE.md`).
+Projeto Supabase `grad` (ref `snuxiwwvlaryggezcezi`, sa-east-1). Sem extensão `h3`: hexágonos calculados com `h3-js`.
+Próxima: Fase 2 (scripts de importação). A planilha da SSP-SP não está no ambiente da nuvem.
 Ver `docs/DIAGNOSTICO.md` (bugs conhecidos), `docs/DECISAO_BACKEND.md` (por que Supabase) e
 `docs/PROMPT_CONTINUIDADE.md` (roadmap).

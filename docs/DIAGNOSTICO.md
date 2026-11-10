@@ -87,3 +87,13 @@ funcionando no app.
 - `rio/bairros.geojson` (166) e `regioes_adm.geojson` (33): já em WGS84.
 - SSP-SP 2025 (fora do Git): ~1,16 milhão de BOs com lat/lng, rubrica e natureza. Muitos com lat/lng = 0
   (sigilo) e nomes de bairro inconsistentes ("Sé" vs "SÉ") — usar lat/lng, não o nome do bairro.
+
+## Atualização — 10/11/2026 (Fases 0 e 1)
+
+- Projeto Supabase `grad` criado (sa-east-1, gratuito). Migrations em `supabase/migrations`: PostGIS, tabelas
+  `subprefectures`, `districts`, `hex_cells` com RLS (leitura pública, escrita bloqueada) e as funções
+  `hexagons_in_view` e `locate_point`. Advisors de segurança sem avisos. Detalhes em `docs/SUPABASE.md`.
+- Extensão `h3` indisponível no Supabase: H3 será calculado no script com `h3-js`.
+- **Pendente:** ligar *anonymous sign-ins* e *manual linking* no painel (o MCP não altera Auth).
+- **Pendente:** a planilha da SSP-SP não existe no ambiente da nuvem; a importação de crimes (Fase 2.2)
+  precisa rodar onde o arquivo estiver, ou o arquivo precisa ser disponibilizado.

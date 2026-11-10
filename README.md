@@ -17,9 +17,11 @@ Grad/
 ├── apps/
 │   ├── mobile/   App React Native + Expo SDK 54 (TypeScript, styled-components, react-native-maps)
 │   └── api/      API legada Express + MongoDB (será substituída pelo Supabase)
+├── supabase/     Configuração do CLI e migrations SQL (esquema, RLS, funções do mapa)
 ├── docs/
 │   ├── DIAGNOSTICO.md           Situação atual, bugs e riscos encontrados
 │   ├── DECISAO_BACKEND.md       Por que o backend vai para o Supabase
+│   ├── SUPABASE.md              Projeto, esquema, funções e configuração de Auth
 │   └── PROMPT_CONTINUIDADE.md   Prompt pronto para retomar o projeto com o Claude Code
 ├── CLAUDE.md     Instruções que o Claude Code lê automaticamente em toda sessão
 └── package.json  Atalhos para rodar os dois apps a partir da raiz
