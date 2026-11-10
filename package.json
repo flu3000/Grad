@@ -13,6 +13,10 @@
     "mobile:go": "npm --prefix apps/mobile run go",
     "data:import-postos": "npm --prefix scripts run import:postos --",
     "data:diagnostico": "npm --prefix scripts run diagnostico --",
-    "test": "npm --prefix scripts test"
+    "test": "npm --prefix scripts test",
+    "data:limpar": "npm --prefix scripts run limpar --",
+    "data:processar": "npm --prefix scripts run processar --",
+    "data:consolidar": "npm --prefix scripts run consolidar --",
+    "data:comparar-banco": "npm --prefix scripts run comparar-banco --"
   }
 }

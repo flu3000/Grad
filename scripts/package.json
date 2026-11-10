@@ -9,7 +9,11 @@
     "typecheck": "tsc --noEmit",
     "import:postos": "tsx --env-file-if-exists=.env importPostos.ts",
     "diagnostico": "tsx --env-file-if-exists=.env diagnosticoPlanilhas.ts",
-    "test": "tsx --test test/*.test.ts"
+    "test": "tsx --test test/*.test.ts",
+    "limpar": "tsx --env-file-if-exists=.env limpar.ts",
+    "processar": "tsx --env-file-if-exists=.env processar.ts",
+    "consolidar": "tsx --env-file-if-exists=.env consolidar.ts",
+    "comparar-banco": "tsx --env-file-if-exists=.env compararBanco.ts"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.119.0",
