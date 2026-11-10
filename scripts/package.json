@@ -7,7 +7,9 @@
     "import:geo": "tsx --env-file-if-exists=.env importGeo.ts",
     "import:crimes": "tsx --env-file-if-exists=.env importCrimes.ts",
     "typecheck": "tsc --noEmit",
-    "import:postos": "tsx --env-file-if-exists=.env importPostos.ts"
+    "import:postos": "tsx --env-file-if-exists=.env importPostos.ts",
+    "diagnostico": "tsx --env-file-if-exists=.env diagnosticoPlanilhas.ts",
+    "test": "tsx --test test/*.test.ts"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.119.0",

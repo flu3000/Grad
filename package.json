@@ -11,6 +11,8 @@
     "data:import-geo": "npm --prefix scripts run import:geo --",
     "data:import-crimes": "npm --prefix scripts run import:crimes --",
     "mobile:go": "npm --prefix apps/mobile run go",
-    "data:import-postos": "npm --prefix scripts run import:postos --"
+    "data:import-postos": "npm --prefix scripts run import:postos --",
+    "data:diagnostico": "npm --prefix scripts run diagnostico --",
+    "test": "npm --prefix scripts test"
   }
 }
