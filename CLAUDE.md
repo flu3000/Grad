@@ -10,8 +10,9 @@ de boletins de ocorrência da SSP-SP. Projeto pessoal; idioma do código e dos c
 - `apps/mobile` — Expo SDK 58, React Native 0.88, React 19.3, TypeScript estrito, styled-components (temas claro e
   escuro em `src/theme/colors.ts`, mesmas chaves; níveis e opacidades em `src/theme/niveis.ts`), react-native-maps,
   expo-location, React Navigation (abas), `@supabase/supabase-js`. Entrada: `index.js` → `App.tsx` →
-  `src/navigation/Abas.tsx` (Mapa, Área, Emergência, Perfil). Configurações (tema, intensidade, unidades no mapa,
-  legenda, centralizar) em `src/contexts/Config_Context.tsx`, salvas no AsyncStorage.
+  `src/navigation/Abas.tsx` (Mapa, Área, Emergência, Perfil). Configurações (tema, intensidade suave/normal, unidades
+  no mapa, centralizar) em `src/contexts/Config_Context.tsx`, salvas no AsyncStorage.
+  Paleta neutra (grafite/cinza-claro) com um azul de destaque (`accent`/`onAccent`); níveis em escala YlOrRd.
   Supabase em `src/lib/supabase.ts` (sessão criptografada: chave no SecureStore, dados no AsyncStorage) e chamadas do
   mapa em `src/lib/mapa.ts`; estado global em `src/contexts/` (sessão de convidado e local atual).
 - `scripts` — ingestão local (TypeScript + tsx): GeoSampa e SSP-SP → Supabase. Pesos em `scripts/src/config/crimeWeights.ts`.
@@ -77,6 +78,8 @@ card do local atual, balão com estatísticas do hexágono tocado e abas Área e
 e-mail/senha removidas (decisão do dono). Fase 3.6 em código: login Google/Apple (`src/lib/loginSocial.ts`, vincula o
 convidado com `linkIdentity`), `expo-dev-client`, `eas.json` e `app.config.ts` (plugins que dependem de credenciais);
 falta o dono criar as credenciais e o primeiro build — passo a passo em `docs/LOGIN_SOCIAL.md`.
+Escala de perigo com **8 níveis** (percentis 15/30/45/60/75/87/95; nível 8 = 5% mais perigosos), recalculada no
+banco pela migration `escala_de_8_niveis` e no script `scoring.ts`.
 Extras (antes do login social): unidades de segurança no mapa (tabela `security_units` + `security_units_in_view`, 340
 unidades da GeoSampa, sem telefone próprio), aba Emergência com telefones úteis e configurações com tema claro/escuro.
 Ver `docs/DIAGNOSTICO.md` (bugs conhecidos), `docs/DECISAO_BACKEND.md` (por que Supabase) e

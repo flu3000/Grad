@@ -215,3 +215,17 @@ funcionando no app.
   unidades no mapa, legenda e centralizar ao abrir; salvas no aparelho.
 - Testado deste ambiente pela internet: `hexagons_in_view`, `locate_point`, `security_units_in_view`, login anônimo e
   bloqueio de escrita do cliente — todos ok.
+
+## Atualização — 10/11/2026 (8 níveis e nova paleta)
+
+- **Escala de 8 níveis.** O nível 5 antigo (20% mais perigosos) ia de ~900 a ~10.000 de peso/km². Agora os cortes são
+  os percentis 15, 30, 45, 60, 75, 87 e 95 dos hexágonos com BO (res. 8): 36 / 203 / 428 / 590 / 804 / 1.090 / 1.683.
+  Distribuição na res. 8: 881 / 246 / 247 / 246 / 247 / 197 / 131 / 83. Recalculado direto no banco a partir do
+  `score` (sem rodar a planilha de novo); o script usa a mesma regra. Ex.: Sé e Paulista = 8; Moema, Cidade Tiradentes e
+  Parelheiros (que estavam no mesmo nível 5) = 6.
+- **Paleta:** fundo grafite (escuro) e cinza-claro/branco (claro), um único azul de destaque para botões e itens ativos,
+  vermelho só para emergência; níveis em escala sequencial YlOrRd (ColorBrewer) com nível 1 cinza. Mapa escuro do
+  Android em tons neutros. Legenda virou uma faixa compacta com os 8 níveis.
+- **Configurações:** saíram a intensidade "forte" (escondia o mapa) e o interruptor da legenda (ela já recolhe com um
+  toque). Configurações antigas salvas no aparelho são convertidas automaticamente.
+- **Atenção:** versões do app anteriores a esta só conhecem 5 níveis; usar a versão nova com o banco atual.

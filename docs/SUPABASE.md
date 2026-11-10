@@ -20,6 +20,7 @@ supabase/
 | `20261110005703_funcoes_mapa` | Funções `hexagons_in_view` e `locate_point` (security invoker, `search_path` vazio) |
 | `20261110012322_resolucao_dinamica` | As duas funções passam a receber a resolução H3 (`res`, padrão 8) |
 | `20261110121600_locate_point_com_contagens` | `locate_point` devolve também `counts` (total, peso e BOs por categoria) para a aba Área |
+| `20261110145922_escala_de_8_niveis` | Níveis passam de 5 para 8 (percentis 15/30/45/60/75/87/95 da resolução 8) e são recalculados |
 | `20261110140840_unidades_de_seguranca` | Tabela `security_units` (PM, Polícia Civil, GCM e Bombeiros da GeoSampa) e função `security_units_in_view` |
 | `20261110015508_corrige_geometrias_invalidas` | Gatilho que aplica `st_makevalid` em distritos/subprefeituras inválidos ao gravar (Lajeado e Guaianases vêm com autointerseção da GeoSampa) |
 
@@ -30,7 +31,7 @@ hexágonos são calculados no script de importação com `h3-js` e gravados em `
 
 - `subprefectures(id, code, name, acronym, area_km2, geom MultiPolygon)` — `id` = `cd_identificador_subprefeitura` da GeoSampa.
 - `districts(id, code, name, acronym, subprefecture_id → subprefectures, area_km2, geom MultiPolygon)` — `id` = `cd_identificador_distrito`.
-- `hex_cells(h3_index pk, resolution, geom Polygon, score, level 1..5, counts jsonb, period, updated_at)`.
+- `hex_cells(h3_index pk, resolution, geom Polygon, score, level 1..8, counts jsonb, period, updated_at)`.
 
 Escrita: só pelos scripts com a chave secreta (ignora RLS). `anon` e `authenticated` não têm privilégio de
 insert/update/delete (testado: `permission denied for table hex_cells`).
