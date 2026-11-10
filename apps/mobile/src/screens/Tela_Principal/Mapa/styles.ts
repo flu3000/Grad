@@ -37,3 +37,8 @@ export const AvisoTexto = styled.Text`
   font-size: 12px;
   color: ${({ theme }) => theme.colors.danger};
 `;
+
+/** Ocupa o lugar da legenda quando ela está desligada nas configurações. */
+export const Espaco = styled.View`
+  flex: 0;
+`;

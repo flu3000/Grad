@@ -31,3 +31,13 @@ export const Texto = styled.Text`
   font-size: 12px;
   color: ${({ theme }) => theme.colors.textSecondary};
 `;
+
+export const Bolinha = styled.View<{ $cor: string }>`
+  width: 16px;
+  height: 16px;
+  border-radius: 8px;
+  margin-right: 8px;
+  align-items: center;
+  justify-content: center;
+  background-color: ${({ $cor }) => $cor};
+`;

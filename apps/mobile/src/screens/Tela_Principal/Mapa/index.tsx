@@ -5,7 +5,10 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from 'styled-components/native';
 import Card_Nivel from '../../../components/Mapa/Card_Nivel';
 import Balao_Hexagono from '../../../components/Mapa/Balao_Hexagono';
+import Balao_Unidade from '../../../components/Mapa/Balao_Unidade';
 import Legenda from '../../../components/Mapa/Legenda';
+import Marcador_Unidade from '../../../components/Mapa/Marcador_Unidade';
+import { useConfig } from '../../../contexts/Config_Context';
 import { useLocalAtual } from '../../../contexts/Local_Atual_Context';
 import {
   buscarHexagonos,
@@ -15,9 +18,10 @@ import {
   type LocalInfo,
   type Resolucao,
 } from '../../../lib/mapa';
+import { DELTA_MAXIMO_UNIDADES, buscarUnidades, type Unidade } from '../../../lib/unidades';
 import type { TelaDaAba } from '../../../navigation/tipos';
 import { mapStyleEscuro } from '../../../theme/mapStyle';
-import { preenchimentoDoNivel } from '../../../theme/niveis';
+import { preenchimentoDoNivel, type Intensidade } from '../../../theme/niveis';
 import * as S from './styles';
 
 // Centro de São Paulo, usado enquanto a localização não chega (ou se for negada).
@@ -28,14 +32,15 @@ const ESPERA_MS = 350; // espera depois do último movimento do mapa antes de bu
 interface PropsHex {
   hex: Hexagono;
   contorno: string;
+  intensidade: Intensidade;
   selecionado: boolean;
   onSelecionar: (hex: Hexagono) => void;
 }
 
-const Hex = memo(({ hex, contorno, selecionado, onSelecionar }: PropsHex) => (
+const Hex = memo(({ hex, contorno, intensidade, selecionado, onSelecionar }: PropsHex) => (
   <Polygon
     coordinates={hex.coordenadas}
-    fillColor={preenchimentoDoNivel(hex.nivel)}
+    fillColor={preenchimentoDoNivel(hex.nivel, intensidade)}
     strokeColor={contorno}
     strokeWidth={selecionado ? 3 : 0.5}
     zIndex={selecionado ? 1 : 0}
@@ -56,6 +61,10 @@ const Mapa = ({ navigation }: TelaDaAba<'Mapa'>) => {
   const insets = useSafeAreaInsets();
   const theme = useTheme();
   const { coords } = useLocalAtual();
+  const { config, esquema } = useConfig();
+  const mostrarUnidades = useRef(config.mostrarUnidades);
+  mostrarUnidades.current = config.mostrarUnidades;
+  const regiaoAtual = useRef<Region>(REGIAO_SP);
   const mapa = useRef<MapView>(null);
   const centralizou = useRef(false);
   const espera = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -64,6 +73,8 @@ const Mapa = ({ navigation }: TelaDaAba<'Mapa'>) => {
   const [hexagonos, setHexagonos] = useState<Hexagono[]>([]);
   const [resolucao, setResolucao] = useState<Resolucao>(7);
   const [selecao, setSelecao] = useState<Selecao | null>(null);
+  const [unidades, setUnidades] = useState<Unidade[]>([]);
+  const [unidadeSel, setUnidadeSel] = useState<Unidade | null>(null);
   const consultaSelecao = useRef(0);
   const [carregando, setCarregando] = useState(false);
   const [erro, setErro] = useState(false);
@@ -74,11 +85,16 @@ const Mapa = ({ navigation }: TelaDaAba<'Mapa'>) => {
     const controle = new AbortController();
     requisicao.current = controle;
     setCarregando(true);
+    const comUnidades = mostrarUnidades.current && regiao.latitudeDelta <= DELTA_MAXIMO_UNIDADES;
+    // As unidades vêm em paralelo; se falharem, os hexágonos aparecem do mesmo jeito.
+    const pedidoUnidades = comUnidades ? buscarUnidades(regiao, controle.signal).catch(() => null) : Promise.resolve([]);
     try {
       const { res, hexagonos: novos } = await buscarHexagonos(regiao, controle.signal);
+      const novasUnidades = await pedidoUnidades;
       if (controle.signal.aborted) return;
       setHexagonos(novos);
       setResolucao(res);
+      if (novasUnidades) setUnidades(novasUnidades);
       setErro(false);
     } catch {
       if (!controle.signal.aborted) setErro(true);
@@ -90,6 +106,7 @@ const Mapa = ({ navigation }: TelaDaAba<'Mapa'>) => {
   const aoMoverMapa = useCallback(
     (regiao: Region) => {
       setUltimaRegiao(regiao);
+      regiaoAtual.current = regiao;
       if (espera.current) clearTimeout(espera.current);
       espera.current = setTimeout(() => carregar(regiao), ESPERA_MS);
     },
@@ -100,6 +117,7 @@ const Mapa = ({ navigation }: TelaDaAba<'Mapa'>) => {
   const selecionar = useCallback(
     async (hex: Hexagono, res: Resolucao) => {
       const id = ++consultaSelecao.current;
+      setUnidadeSel(null);
       setSelecao({ hex, resolucao: res, info: null, carregando: true, erro: false });
       const { latitude, longitude } = centroDoHexagono(hex);
       try {
@@ -116,6 +134,21 @@ const Mapa = ({ navigation }: TelaDaAba<'Mapa'>) => {
     consultaSelecao.current++;
     setSelecao(null);
   }, []);
+  const selecionarUnidade = useCallback(
+    (u: Unidade) => {
+      fecharSelecao();
+      setUnidadeSel(u);
+    },
+    [fecharSelecao],
+  );
+
+  // Ligar/desligar as unidades nas configurações recarrega a região atual.
+  useEffect(() => {
+    if (!config.mostrarUnidades) {
+      setUnidades([]);
+      setUnidadeSel(null);
+    } else carregar(regiaoAtual.current);
+  }, [config.mostrarUnidades, carregar]);
 
   // Primeira carga (cidade inteira) e limpeza ao sair da tela.
   useEffect(() => {
@@ -126,12 +159,12 @@ const Mapa = ({ navigation }: TelaDaAba<'Mapa'>) => {
     };
   }, [carregar]);
 
-  // Centraliza no usuário uma única vez, quando a localização chega.
+  // Centraliza no usuário uma única vez, quando a localização chega (se estiver ligado nas configurações).
   useEffect(() => {
-    if (!coords || centralizou.current) return;
+    if (!coords || centralizou.current || !config.centralizarAoAbrir) return;
     centralizou.current = true;
     mapa.current?.animateToRegion({ ...coords, latitudeDelta: DELTA_LOCAL, longitudeDelta: DELTA_LOCAL }, 600);
-  }, [coords]);
+  }, [coords, config.centralizarAoAbrir]);
 
   return (
     <S.Container>
@@ -140,8 +173,8 @@ const Mapa = ({ navigation }: TelaDaAba<'Mapa'>) => {
         style={{ flex: 1 }}
         initialRegion={REGIAO_SP}
         onRegionChangeComplete={aoMoverMapa}
-        customMapStyle={mapStyleEscuro}
-        userInterfaceStyle="dark"
+        customMapStyle={esquema === 'escuro' ? mapStyleEscuro : []}
+        userInterfaceStyle={esquema === 'escuro' ? 'dark' : 'light'}
         showsUserLocation
         showsMyLocationButton
         toolbarEnabled={false}
@@ -154,17 +187,23 @@ const Mapa = ({ navigation }: TelaDaAba<'Mapa'>) => {
               key={h.h3}
               hex={h}
               contorno={selecionado ? theme.colors.textPrimary : theme.colors.hexStroke}
+              intensidade={config.intensidade}
               selecionado={selecionado}
               onSelecionar={aoTocarHex}
             />
           );
         })}
+        {config.mostrarUnidades &&
+          ultimaRegiao.latitudeDelta <= DELTA_MAXIMO_UNIDADES &&
+          unidades.map((u) => (
+            <Marcador_Unidade key={u.id} unidade={u} selecionada={unidadeSel?.id === u.id} onSelecionar={selecionarUnidade} />
+          ))}
       </MapView>
 
       <S.Topo $topInset={insets.top}>
         <Card_Nivel onPress={() => navigation.navigate('Area')} />
         <S.LinhaInferior>
-          <Legenda />
+          {config.mostrarLegenda ? <Legenda comUnidades={config.mostrarUnidades} /> : <S.Espaco />}
           <S.Status>
             {carregando && <ActivityIndicator size="small" color={theme.colors.textPrimary} />}
             {erro && !carregando && (
@@ -186,6 +225,7 @@ const Mapa = ({ navigation }: TelaDaAba<'Mapa'>) => {
           onTentarDeNovo={() => selecionar(selecao.hex, selecao.resolucao)}
         />
       )}
+      {unidadeSel && <Balao_Unidade unidade={unidadeSel} onFechar={() => setUnidadeSel(null)} />}
     </S.Container>
   );
 };
