@@ -32,6 +32,7 @@ de boletins de ocorrência da SSP-SP. Projeto pessoal; idioma do código e dos c
   validar o build sem celular: `npx expo export --platform android --platform ios` em `apps/mobile`
 - Checagem de tipos (rodar antes de todo commit): `npm run typecheck`
 - Não há testes automatizados ainda.
+- `npm audit`: não usar `--force` no app (troca o SDK do Expo); ver a seção de dependências em `docs/DIAGNOSTICO.md`.
 
 ## Convenções
 - Pastas/arquivos de tela e componente em `Pascal_Snake_Case` (`Tela_Principal/Main/index.tsx` + `styles.ts`).

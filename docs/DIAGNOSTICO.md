@@ -172,3 +172,16 @@ funcionando no app.
   `anon`. **Não testado em celular** (o ambiente da nuvem não roda o app nem acessa o Supabase por HTTP).
 - **Pendente:** build Android de produção precisa da chave do Google Maps em `app.json` (Fase 4.3); o nível 5 ainda
   junta scores muito diferentes (avaliar no celular).
+
+## Dependências e `npm audit` — 10/11/2026
+
+- `apps/mobile`: 33 → 13 vulnerabilidades (0 críticas, 1 alta) com `npm audit fix` e `overrides` de `ws@^7` → 7.5.13
+  e `postcss` → 8.5.x (mesma série, sem quebra). Todas as restantes estão em **ferramentas de desenvolvimento** (CLI do
+  Expo, Metro, config plugins), não no código que vai para o celular:
+  - `image-size` (alta): DoS ao ler imagem maliciosa; só processa os assets do próprio projeto. Correção exige a v2
+    (quebra o Metro).
+  - `glob`, `minimatch`, `deepmerge` e os pacotes `@expo/*` que dependem deles: corrigidos só no Expo SDK 58.
+    **Não** usar `npm audit fix --force`: ele instala o SDK 58 e quebra a compatibilidade com o SDK 54 / Expo Go.
+  - Reavaliar ao atualizar o SDK do Expo.
+- `scripts`: 0 vulnerabilidades (`overrides` de `uuid` → 11.x; o exceljs só usa `v4`, que não mudou).
+- Os avisos `npm warn deprecated` (inflight, glob, rimraf, fstream…) vêm de dependências indiretas e não afetam o uso.
