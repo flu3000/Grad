@@ -23,7 +23,7 @@ cp scripts/.env.example scripts/.env
 ```
 
 Preencha `SUPABASE_SECRET_KEY` em `scripts/.env` (painel → Project Settings → API Keys → *Secret keys*).
-Coloque a planilha em `apps/api/data/SSP-SP/` (ou `data/SSP-SP/` depois da Fase 2.3), ou passe `--arquivo=`.
+Coloque a planilha em `data/SSP-SP/` ou passe `--arquivo=`.
 
 ```bash
 npm run data:import-geo -- --gravar

@@ -15,6 +15,6 @@ dist/
 .DS_Store
 Thumbs.db
 
-# Planilhas grandes de dados brutos (ficam fora do Git — ver apps/api/data/README.md)
+# Planilhas grandes de dados brutos (ficam fora do Git — ver data/README.md)
 *.xlsx
 ~$*

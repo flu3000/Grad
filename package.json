@@ -1,16 +1,13 @@
 {
   "name": "grad-monorepo",
   "private": true,
-  "description": "Grad — mapa de segurança de São Paulo (app Expo, Supabase e scripts de dados)",
+  "description": "Grad — mapa de segurança de São Paulo (app Expo + Supabase + scripts de dados)",
   "scripts": {
-    "install:all": "npm --prefix apps/api ci && npm --prefix apps/mobile ci && npm --prefix scripts ci",
-    "api:dev": "npm --prefix apps/api run dev",
-    "api:build": "npm --prefix apps/api run build",
-    "api:import-geo": "npm --prefix apps/api run import:geo",
+    "install:all": "npm --prefix apps/mobile ci && npm --prefix scripts ci",
     "mobile:start": "npm --prefix apps/mobile start",
     "mobile:android": "npm --prefix apps/mobile run android",
     "mobile:ios": "npm --prefix apps/mobile run ios",
-    "typecheck": "npm --prefix apps/api exec -- tsc --noEmit -p apps/api && npm --prefix apps/mobile exec -- tsc --noEmit -p apps/mobile && npm --prefix scripts run typecheck",
+    "typecheck": "npm --prefix apps/mobile exec -- tsc --noEmit -p apps/mobile && npm --prefix scripts run typecheck",
     "data:import-geo": "npm --prefix scripts run import:geo --",
     "data:import-crimes": "npm --prefix scripts run import:crimes --"
   }
