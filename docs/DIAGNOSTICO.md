@@ -27,7 +27,7 @@ funcionando no app.
 1. **Variável de ambiente no formato do Vite, não do Expo.** `apps/mobile/src/services/api.ts:5` e `:26` usam
    `import.meta.env.VITE_API_URL`. O Expo só injeta variáveis com prefixo `EXPO_PUBLIC_` via
    `process.env.EXPO_PUBLIC_API_URL`. Hoje `baseURL` fica `undefined`. O arquivo `src/vite-env.d.ts` também é herança do Vite.
-2. **URL interna do Railway.** O `.env` do app aponta para `https://grad-back.railway.internal`, endereço da
+2. ~~**URL interna do Railway.**~~ *(Obsoleto em 10/11/2026: o Railway foi abandonado em favor do Supabase.)* O `.env` do app aponta para `https://grad-back.railway.internal`, endereço da
    rede privada do Railway, inacessível de um celular. É preciso usar o domínio público
    (`https://<servico>.up.railway.app`) ou `http://<IP-do-PC>:3333` em desenvolvimento.
 3. **`localStorage` e `window.location` não existem no React Native.** `src/services/TokenStorage.ts` e
@@ -87,3 +87,64 @@ funcionando no app.
 - `rio/bairros.geojson` (166) e `regioes_adm.geojson` (33): já em WGS84.
 - SSP-SP 2025 (fora do Git): ~1,16 milhão de BOs com lat/lng, rubrica e natureza. Muitos com lat/lng = 0
   (sigilo) e nomes de bairro inconsistentes ("Sé" vs "SÉ") — usar lat/lng, não o nome do bairro.
+
+## Atualização — 10/11/2026 (Fases 0 e 1)
+
+- Projeto Supabase `grad` criado (sa-east-1, gratuito). Migrations em `supabase/migrations`: PostGIS, tabelas
+  `subprefectures`, `districts`, `hex_cells` com RLS (leitura pública, escrita bloqueada) e as funções
+  `hexagons_in_view` e `locate_point`. Advisors de segurança sem avisos. Detalhes em `docs/SUPABASE.md`.
+- Extensão `h3` indisponível no Supabase: H3 será calculado no script com `h3-js`.
+- Login anônimo e manual linking ligados no painel pelo dono.
+- **Pendente:** a planilha da SSP-SP não existe no ambiente da nuvem; a importação de crimes (Fase 2.2)
+  precisa rodar onde o arquivo estiver, ou o arquivo precisa ser disponibilizado.
+
+## Atualização — 10/11/2026 (Fase 2, parte 1)
+
+- Pacote `scripts/` com `importGeo.ts` e `importCrimes.ts` (streaming com exceljs, filtro por distrito, H3 com h3-js).
+  Testado com planilha sintética de 40 mil linhas (4 s); a real tem ~1,16 mi, estimativa de 1–3 min.
+- Pesos aprovados (estupro 9; roubo de veículo/carga 6). Classificação por regras em ordem; o relatório lista
+  os textos que caíram em "outros" para revisão antes de gravar.
+- Nível 1..5 por quintis do peso/km² na resolução 8, com os mesmos cortes nas resoluções 7 e 9.
+  **Reavaliar com os dados reais:** na resolução 9, poucos BOs por hexágono podem deixar o mapa "pipocado".
+- Normalização por população: não usada na cor do mapa (ver justificativa no histórico da sessão e em
+  `scripts/README.md`); candidata a informação complementar por distrito na aba Área.
+
+## Atualização — 10/11/2026 (Fase 2, parte 2: dados reais)
+
+- Distritos e subprefeituras gravados pelo dono. Dois bugs encontrados e corrigidos:
+  - **Vínculo distrito → subprefeitura errado em 95 de 96 distritos.** O campo `cd_identificador_subprefeitura` do
+    arquivo de distritos é o *código* da subprefeitura, não o identificador. O `importGeo.ts` legado (Mongo) tinha o
+    mesmo erro. Corrigido no script novo e no banco; conferido espacialmente (96/96).
+  - **Geometrias inválidas** (autointerseção) no distrito Lajeado e na subprefeitura Guaianases, vindas da GeoSampa.
+    Corrigidas com gatilho `st_makevalid` (migration `corrige_geometrias_invalidas`).
+- Relatório de crimes com a planilha real: 1.161.132 linhas, 318 mil sem localização, 463 mil fora do município
+  (a planilha cobre o estado), ~380 mil válidas. A primeira aba não tem dados. Estupro aparece zerado: a SSP não
+  publica localização de crimes sexuais nessa base.
+- O aviso de meses repetidos entre abas era esperado (data da ocorrência ≠ data do registro). Agora os duplicados são
+  removidos pelo número do BO + ano + delegacia.
+- Novas categorias propostas: extorsão mediante sequestro (9), porte/posse de arma (3), tráfico (2), culposos (0).
+- Estupro sem coordenada: proposta de distribuir o peso pela área do distrito (não no centroide, para não criar
+  mancha falsa num hexágono), contando só local público. O relatório agora traz `semLocalizacao_diagnostico`
+  (cidade, categoria, se o BAIRRO casa com um distrito, tipo de local) para decidir com os dados reais.
+- Segundo relatório real: a planilha **não tem `NUM_BO`** (não dá para deduplicar por número). As abas são divididas pela
+  data de registro (1º e 2º semestre de 2025) e trazem ocorrências antigas (desde 2005) e algumas de 2026. Agora, por padrão,
+  só contam ocorrências dentro do período (`--todas-as-datas` desliga). O aviso de duplicação foi recalibrado (só meses com
+  ≥ 1% das linhas e divididos ≥ 25% entre abas). Sem coordenada na capital: 87.765 BOs, 2.925 estupros (64% com bairro
+  igual a nome de distrito).
+- Pesos novos aprovados (culposo = 0: crime sem intenção, quase todo de trânsito). Estupro sem coordenada, na capital,
+  em local público e com bairro = distrito passa a ser distribuído igualmente pelos hexágonos do distrito.
+- Terceiro relatório real: 418 estupros distribuídos pelos distritos. Ajustes: cortes de nível calculados só com BOs
+  com coordenada (os distribuídos tinham baixado o 1º corte de ~80 para 12); "local público" restrito a espaços de
+  circulação (sem escola, saúde, templo, repartição); apreensão/mandado → peso 0; "Centro Histórico" → Sé.
+  Bairros menores (Jardim Colina, Vila Fanton…) não casam com distrito: precisaria de tabela bairro → distrito.
+
+## Atualização — 10/11/2026 (Fase 2: dados gravados e conferidos)
+
+- `hex_cells`: 373 / 2.278 / 14.985 hexágonos (res. 7 / 8 / 9), 373.639 BOs com coordenada e 282 estupros distribuídos
+  em cada resolução, período 2025, nenhuma geometria inválida. Níveis idênticos aos do relatório.
+- `locate_point` (como `anon`): Sé, Paulista, Luz e Largo 13 → nível 5; Cantareira → 1; Guarulhos → nulo (fora de SP);
+  distrito e subprefeitura corretos em todos os pontos testados.
+- `hexagons_in_view`: cidade inteira na res. 7 = 372 hexágonos (~79 KB de GeoJSON) em ~45 ms.
+- Advisors: segurança sem avisos; performance só `unused_index` no índice da FK `districts.subprefecture_id` (mantido).
+- **Para avaliar na Fase 3:** o nível 5 junta scores de ~900 a ~10.000 peso/km² (Sé ≈ 6.400, Cidade Tiradentes ≈ 970).
+  Se o mapa ficar pouco informativo no centro, dá para usar o `score` para variar a intensidade dentro do nível 5.

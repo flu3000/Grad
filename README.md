@@ -17,9 +17,12 @@ Grad/
 ├── apps/
 │   ├── mobile/   App React Native + Expo SDK 54 (TypeScript, styled-components, react-native-maps)
 │   └── api/      API legada Express + MongoDB (será substituída pelo Supabase)
+├── scripts/      Importação local de distritos e BOs para o Supabase (ver scripts/README.md)
+├── supabase/     Configuração do CLI e migrations SQL (esquema, RLS, funções do mapa)
 ├── docs/
 │   ├── DIAGNOSTICO.md           Situação atual, bugs e riscos encontrados
 │   ├── DECISAO_BACKEND.md       Por que o backend vai para o Supabase
+│   ├── SUPABASE.md              Projeto, esquema, funções e configuração de Auth
 │   └── PROMPT_CONTINUIDADE.md   Prompt pronto para retomar o projeto com o Claude Code
 ├── CLAUDE.md     Instruções que o Claude Code lê automaticamente em toda sessão
 └── package.json  Atalhos para rodar os dois apps a partir da raiz
@@ -29,6 +32,10 @@ Este repositório reúne os antigos `flu3000/Grad` (front) e `flu3000/Grad-back`
 de commits dos dois preservado.
 
 ## Rodando localmente
+
+> **Setup legado.** As instruções abaixo valem para a API Express + MongoDB, que será removida na Fase 2
+> do roadmap ([docs/PROMPT_CONTINUIDADE.md](docs/PROMPT_CONTINUIDADE.md)). Depois da migração, o app falará
+> direto com o Supabase e não haverá API para subir.
 
 Pré-requisitos: Node.js 22+, npm, uma instância MongoDB (ex.: MongoDB Atlas) e o app Expo Go
 no celular (ou emulador Android/iOS).

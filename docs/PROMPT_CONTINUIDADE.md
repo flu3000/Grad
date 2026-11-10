@@ -46,11 +46,11 @@ sem servidor próprio, projeto na região sa-east-1 (São Paulo), plano gratuito
 
 ## Roadmap (na ordem; commits pequenos em português)
 
-Fase 0 — Configuração do repositório
+Fase 0 — Configuração do repositório (concluída em 10/11/2026)
 1. Confirme que .claude/settings.json tem a atribuição vazia e que CLAUDE.md contém a regra de autoria.
 2. Confira que CLAUDE.md e README já apontam o Supabase como backend (o Railway foi abandonado).
 
-Fase 1 — Supabase: projeto, esquema e auth
+Fase 1 — Supabase: projeto, esquema e auth (concluída em 10/11/2026; falta ligar anônimo/manual linking no painel)
 1. Projeto: se o MCP do Supabase estiver disponível, liste meus projetos e ME PERGUNTE antes de criar o
    projeto "grad" (região sa-east-1, plano gratuito). Se não estiver, me passe o passo a passo no painel.
 2. Crie a pasta supabase/ na raiz (supabase init) com migrations versionadas: extensão postgis (schema
@@ -64,7 +64,7 @@ Fase 1 — Supabase: projeto, esquema e auth
    credenciais no Google Cloud e na Apple — me guie quando chegar a hora).
 5. Rode os advisors de segurança/performance do Supabase e corrija o que aparecer.
 
-Fase 2 — Ingestão de dados (scripts locais, TypeScript, rodados com a chave secreta em .env não versionado)
+Fase 2 — Ingestão de dados (itens 1 e 2 concluídos em 10/11/2026: dados no Supabase; falta o item 3) (scripts locais, TypeScript, rodados com a chave secreta em .env não versionado)
 1. scripts/importGeo.ts: distritos e subprefeituras de SP para o Supabase (reaproveitar a conversão
    EPSG:31983 → WGS84 do apps/api).
 2. scripts/importCrimes.ts: lê a planilha por streaming (ou converte antes para CSV), descarta lat/lng
