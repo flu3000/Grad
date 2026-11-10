@@ -28,15 +28,17 @@ de boletins de ocorrência da SSP-SP. Projeto pessoal; idioma do código e dos c
 ## Comandos
 - Instalar: `npm run install:all` (ou `npm ci` dentro de cada pacote)
 - Dados (com `scripts/.env`): `npm run data:import-geo` e `npm run data:import-crimes` (simulam; `-- --gravar` grava)
-- Mobile: `npm run mobile:start` (validar deps nativas com `npx expo install --check` em `apps/mobile`);
+- Mobile: `npm run mobile:start` abre no app de desenvolvimento; `npm run mobile:go` abre no Expo Go (validar deps nativas com `npx expo install --check` em `apps/mobile`);
   validar o build sem celular: `npx expo export --platform android --platform ios` em `apps/mobile`
 - Checagem de tipos (rodar antes de todo commit): `npm run typecheck`
 - Não há testes automatizados ainda.
 - `npm audit`: não usar `--force` no app (troca o SDK do Expo); ver a seção de dependências em `docs/DIAGNOSTICO.md`.
 - O SDK precisa ser o mesmo do Expo Go instalado no celular (a loja só oferece o mais recente). Neste ambiente da nuvem,
   rodar o CLI do Expo com `EXPO_OFFLINE=1` (a rede bloqueia a API do Expo).
-- Só usar módulos nativos incluídos no Expo Go (`node_modules/expo/bundledNativeModules.json`) enquanto não houver
-  development build; ex.: `expo-crypto` em vez de `react-native-get-random-values`.
+- O app precisa continuar abrindo no Expo Go: módulos nativos fora do Expo Go (`node_modules/expo/bundledNativeModules.json`),
+  como o Google Sign-In, só são carregados com `require` dentro da função e quando `emExpoGo` é falso.
+- Identificadores: `com.flu3000.grad` (Android `package` e iOS `bundleIdentifier`), esquema `grad`.
+- Credenciais do Google/Maps entram por variável de ambiente (`.env` local e `eas env`), lidas em `app.config.ts`.
 
 ## Convenções
 - Pastas/arquivos de tela e componente em `Pascal_Snake_Case` (`Tela_Principal/Main/index.tsx` + `styles.ts`).
@@ -67,7 +69,9 @@ Fase 2 (itens 1 e 2) concluída: distritos e subprefeituras (96/32) e 17.636 hex
 estupros sem coordenada distribuídos pelo distrito) gravados no Supabase e conferidos. Pesos aprovados (inclui
 extorsão/sequestro 9, arma 3, tráfico 2, culposo 0). Fase 2.3 concluída: `apps/api` removido, dados em `data/`.
 Fase 3 (itens 1 a 5) feita: app entra como convidado automaticamente, mapa com hexágonos por zoom (7/8/9), legenda,
-card do local atual e abas Área e Perfil. Telas de e-mail/senha removidas (decisão do dono). Próximo: Fase 3.6
-(login Google/Apple com `linkIdentity` + EAS development build).
+card do local atual, balão com estatísticas do hexágono tocado e abas Área e Perfil (barra de abas padrão). Telas de
+e-mail/senha removidas (decisão do dono). Fase 3.6 em código: login Google/Apple (`src/lib/loginSocial.ts`, vincula o
+convidado com `linkIdentity`), `expo-dev-client`, `eas.json` e `app.config.ts` (plugins que dependem de credenciais);
+falta o dono criar as credenciais e o primeiro build — passo a passo em `docs/LOGIN_SOCIAL.md`.
 Ver `docs/DIAGNOSTICO.md` (bugs conhecidos), `docs/DECISAO_BACKEND.md` (por que Supabase) e
 `docs/PROMPT_CONTINUIDADE.md` (roadmap).
