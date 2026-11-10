@@ -1,0 +1,25 @@
+{
+  "name": "grad-scripts",
+  "private": true,
+  "description": "Scripts locais de ingestão de dados do Grad (GeoSampa e SSP-SP → Supabase)",
+  "type": "commonjs",
+  "scripts": {
+    "import:geo": "tsx --env-file-if-exists=.env importGeo.ts",
+    "import:crimes": "tsx --env-file-if-exists=.env importCrimes.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.119.0",
+    "@turf/boolean-point-in-polygon": "^7.4.0",
+    "@turf/helpers": "^7.4.0",
+    "exceljs": "^4.4.0",
+    "h3-js": "^4.5.0",
+    "proj4": "^2.22.0"
+  },
+  "devDependencies": {
+    "@types/geojson": "^7946.0.16",
+    "@types/node": "^26.6.6",
+    "tsx": "^4.23.15",
+    "typescript": "~5.9.3"
+  }
+}

@@ -1,0 +1,213 @@
+/**
+ * Lê a planilha de BOs da SSP-SP por streaming, descarta localizações inválidas ou fora do município,
+ * agrega por hexágono H3 (resoluções 7, 8 e 9) com os pesos de src/config/crimeWeights.ts e grava em hex_cells.
+ *
+ *   npm run import:crimes                     → relatório (não grava): categorias, textos sem regra, níveis
+ *   npm run import:crimes -- --gravar         → grava (upsert) em public.hex_cells
+ *   Opções: --arquivo=caminho.xlsx  --periodo=2025
+ */
+import fs from 'fs';
+import path from 'path';
+import ExcelJS from 'exceljs';
+import booleanPointInPolygon from '@turf/boolean-point-in-polygon';
+import { point } from '@turf/helpers';
+import { cellToBoundary, polygonToCellsExperimental, POLYGON_TO_CELLS_FLAGS } from 'h3-js';
+import type { MultiPolygon } from 'geojson';
+import { CRIME_WEIGHTS, classifyCrime, normalizeText, type CrimeCategory } from './src/config/crimeWeights';
+import { readGeoSampa } from './src/lib/city';
+import { polygonToEwkt } from './src/lib/geometry';
+import { arg, dataDir, outDir } from './src/lib/paths';
+import {
+  addOccurrence,
+  density,
+  levelBreaks,
+  levelFor,
+  newAggregation,
+  REFERENCE_RESOLUTION,
+  RESOLUTIONS,
+} from './src/lib/scoring';
+import { adminClient, upsertInBatches } from './src/lib/supabase';
+
+const REQUIRED = ['LATITUDE', 'LONGITUDE', 'RUBRICA', 'NATUREZA_APURADA'] as const;
+
+interface District {
+  geometry: MultiPolygon;
+  bbox: [number, number, number, number];
+}
+
+function bboxOf(geom: MultiPolygon): [number, number, number, number] {
+  let [minX, minY, maxX, maxY] = [Infinity, Infinity, -Infinity, -Infinity];
+  for (const poly of geom.coordinates)
+    for (const [x, y] of poly[0]) {
+      if (x < minX) minX = x;
+      if (y < minY) minY = y;
+      if (x > maxX) maxX = x;
+      if (y > maxY) maxY = y;
+    }
+  return [minX, minY, maxX, maxY];
+}
+
+/** Aceita número ou texto com vírgula decimal ("-23,55"). */
+function toNumber(v: unknown): number {
+  if (typeof v === 'number') return v;
+  if (typeof v === 'string') return Number(v.trim().replace(',', '.'));
+  if (v && typeof v === 'object' && 'result' in v) return toNumber((v as { result: unknown }).result);
+  return NaN;
+}
+
+function cellText(v: unknown): string {
+  if (v == null) return '';
+  if (typeof v === 'object' && 'richText' in v) return (v as { richText: { text: string }[] }).richText.map((t) => t.text).join('');
+  if (typeof v === 'object' && 'result' in v) return String((v as { result: unknown }).result ?? '');
+  return String(v);
+}
+
+function defaultSpreadsheet(): string {
+  const dir = path.join(dataDir(), 'SSP-SP');
+  const file = fs.existsSync(dir) ? fs.readdirSync(dir).find((f) => f.endsWith('.xlsx') && !f.startsWith('~$')) : undefined;
+  if (!file) throw new Error(`Nenhuma planilha .xlsx em ${dir}. Use --arquivo=caminho.xlsx`);
+  return path.join(dir, file);
+}
+
+async function main() {
+  const gravar = arg('gravar') === 'true';
+  const periodo = arg('periodo') ?? '2025';
+  const arquivo = arg('arquivo') ?? defaultSpreadsheet();
+  console.log(`Planilha: ${arquivo}\nPeríodo: ${periodo}`);
+
+  // Município = união dos 96 distritos (WGS84).
+  const districts: District[] = readGeoSampa('distritos').map((f) => ({ geometry: f.geometry, bbox: bboxOf(f.geometry) }));
+  const city = districts.reduce(
+    (b, d) => [Math.min(b[0], d.bbox[0]), Math.min(b[1], d.bbox[1]), Math.max(b[2], d.bbox[2]), Math.max(b[3], d.bbox[3])],
+    [Infinity, Infinity, -Infinity, -Infinity],
+  );
+  const insideCity = (lat: number, lng: number) => {
+    if (lng < city[0] || lng > city[2] || lat < city[1] || lat > city[3]) return false;
+    const pt = point([lng, lat]);
+    return districts.some(
+      (d) => lng >= d.bbox[0] && lng <= d.bbox[2] && lat >= d.bbox[1] && lat <= d.bbox[3] && booleanPointInPolygon(pt, d.geometry),
+    );
+  };
+
+  // Grade completa: todo hexágono que toca o município, mesmo sem ocorrência (fica nível 1).
+  const grid = new Map<number, Set<string>>(RESOLUTIONS.map((r) => [r, new Set<string>()]));
+  for (const d of districts)
+    for (const poly of d.geometry.coordinates)
+      for (const res of RESOLUTIONS)
+        for (const h of polygonToCellsExperimental(poly, res, POLYGON_TO_CELLS_FLAGS.containmentOverlapping, true))
+          grid.get(res)!.add(h);
+
+  const agg = newAggregation();
+  const stats = { linhas: 0, semLocalizacao: 0, foraDoMunicipio: 0, validas: 0 };
+  const porCategoria: Partial<Record<CrimeCategory, number>> = {};
+  const textosOutros = new Map<string, number>();
+
+  const reader = new ExcelJS.stream.xlsx.WorkbookReader(arquivo, {
+    sharedStrings: 'cache',
+    worksheets: 'emit',
+    hyperlinks: 'ignore',
+    styles: 'ignore',
+    entries: 'ignore',
+  });
+
+  let aba = 0;
+  for await (const sheet of reader) {
+    aba++;
+    let cols: Record<string, number> | null = null;
+    for await (const row of sheet) {
+      const values = row.values as unknown[];
+      if (!cols) {
+        const header = Array.from(values, (v) => normalizeText(cellText(v))); // row.values é esparso (começa no índice 1)
+        if (REQUIRED.every((c) => header.includes(c))) {
+          cols = Object.fromEntries(header.map((h, i) => [h, i]));
+          console.log(`Aba ${aba}: cabeçalho na linha ${row.number}`);
+        }
+        continue;
+      }
+      stats.linhas++;
+      const lat = toNumber(values[cols.LATITUDE]);
+      const lng = toNumber(values[cols.LONGITUDE]);
+      if (!Number.isFinite(lat) || !Number.isFinite(lng) || lat === 0 || lng === 0) {
+        stats.semLocalizacao++;
+        continue;
+      }
+      if (!insideCity(lat, lng)) {
+        stats.foraDoMunicipio++;
+        continue;
+      }
+      const rubrica = cellText(values[cols.RUBRICA]);
+      const natureza = cellText(values[cols.NATUREZA_APURADA]);
+      const category = classifyCrime(rubrica, natureza);
+      porCategoria[category] = (porCategoria[category] ?? 0) + 1;
+      if (category === 'outros') {
+        const key = normalizeText(`${rubrica} | ${natureza}`);
+        textosOutros.set(key, (textosOutros.get(key) ?? 0) + 1);
+      }
+      addOccurrence(agg, lat, lng, category);
+      stats.validas++;
+      if (stats.linhas % 100_000 === 0) process.stdout.write(`  ${stats.linhas} linhas lidas\r`);
+    }
+    if (!cols) console.log(`Aba ${aba}: sem as colunas ${REQUIRED.join(', ')} — ignorada`);
+  }
+  if (!stats.linhas) throw new Error('Nenhuma linha de dados encontrada.');
+
+  // Nota = densidade ponderada (pesos/km²); níveis pelos quintis da resolução de referência.
+  const refCells = agg.get(REFERENCE_RESOLUTION)!;
+  const breaks = levelBreaks([...refCells].map(([h, s]) => density(h, s)));
+
+  const rows: object[] = [];
+  const niveis: Record<number, number[]> = {};
+  for (const res of RESOLUTIONS) {
+    const cells = agg.get(res)!;
+    const all = new Set([...grid.get(res)!, ...cells.keys()]);
+    niveis[res] = [0, 0, 0, 0, 0];
+    for (const h of all) {
+      const s = cells.get(h);
+      const score = density(h, s);
+      const level = levelFor(score, breaks);
+      niveis[res][level - 1]++;
+      rows.push({
+        h3_index: h,
+        resolution: res,
+        geom: polygonToEwkt(cellToBoundary(h, true)),
+        score: Number(score.toFixed(4)),
+        level,
+        counts: { total: s?.total ?? 0, peso: s?.weight ?? 0, ...(s?.byCategory ?? {}) },
+        period: periodo,
+        updated_at: new Date().toISOString(),
+      });
+    }
+  }
+
+  const report = {
+    periodo,
+    arquivo: path.basename(arquivo),
+    ...stats,
+    porCategoria,
+    pesos: CRIME_WEIGHTS,
+    cortesDeNivel_pesoPorKm2: breaks.map((b) => Number(b.toFixed(2))),
+    hexagonos: Object.fromEntries(RESOLUTIONS.map((r) => [r, { total: niveis[r].reduce((a, b) => a + b, 0), porNivel: niveis[r] }])),
+    textosEmOutros_top50: [...textosOutros].sort((a, b) => b[1] - a[1]).slice(0, 50),
+  };
+  fs.mkdirSync(outDir, { recursive: true });
+  const reportFile = path.join(outDir, `relatorio_crimes_${periodo}.json`);
+  fs.writeFileSync(reportFile, JSON.stringify(report, null, 2));
+
+  console.log(`\nLinhas: ${stats.linhas} | sem localização: ${stats.semLocalizacao} | fora do município: ${stats.foraDoMunicipio} | válidas: ${stats.validas}`);
+  console.log('Por categoria:', porCategoria);
+  console.log('Cortes de nível (peso/km²):', report.cortesDeNivel_pesoPorKm2);
+  for (const r of RESOLUTIONS) console.log(`Resolução ${r}: ${report.hexagonos[r].total} hexágonos, por nível 1..5 = ${niveis[r].join(' / ')}`);
+  console.log(`Relatório completo: ${reportFile}`);
+
+  if (!gravar) {
+    console.log('\nNada foi gravado. Revise o relatório e rode com --gravar para enviar ao Supabase.');
+    return;
+  }
+  await upsertInBatches(adminClient(), 'hex_cells', rows, 'h3_index', 500);
+  console.log('\nHexágonos gravados.');
+}
+
+main().catch((err) => {
+  console.error(process.env.DEBUG && err instanceof Error ? err.stack : err instanceof Error ? err.message : err);
+  process.exit(1);
+});
