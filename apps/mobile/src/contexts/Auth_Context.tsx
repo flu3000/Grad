@@ -1,5 +1,6 @@
 import React, { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react';
 import type { Session } from '@supabase/supabase-js';
+import { sairDoGoogle } from '../lib/loginSocial';
 import { supabase } from '../lib/supabase';
 
 interface AuthState {
@@ -52,6 +53,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const sair = useCallback(async () => {
     await supabase.auth.signOut();
+    await sairDoGoogle();
     await entrarComoConvidado();
   }, [entrarComoConvidado]);
 

@@ -184,3 +184,18 @@ funcionando no app.
   **não** usar `npm audit fix --force`. Os `overrides` de `ws`/`postcss` do SDK 54 não são mais necessários.
 - `scripts`: 0 vulnerabilidades (`overrides` de `uuid` → 11.x; o exceljs só usa `v4`, que não mudou).
 - Os avisos `npm warn deprecated` (inflight, glob, rimraf, fstream…) vêm de dependências indiretas e não afetam o uso.
+
+## Atualização — 10/11/2026 (Fase 3: ajustes e item 6)
+
+- Barra de abas: trocada a barra flutuante por uma barra padrão presa embaixo (React Navigation), com o tema do app.
+- Mapa: tocar num hexágono abre um balão com distrito, subprefeitura, nível, total de BOs e BOs por tipo (via
+  `locate_point` no centro do hexágono, na resolução visível). Componentes `Selo_Nivel` e `Lista_Ocorrencias` reutilizados
+  na aba Área.
+- Item 6 (código pronto, **não testado**: depende de credenciais e de um development build):
+  - `src/lib/loginSocial.ts`: Google (`@react-native-google-signin/google-signin` 17) e Apple (`expo-apple-authentication`,
+    com nonce). Convidado → `linkIdentity`; se a conta já existir (`identity_already_exists`) → `signInWithIdToken`.
+  - No Expo Go o Perfil mostra um aviso; o módulo do Google só é carregado fora do Expo Go.
+  - `app.json`: `com.flu3000.grad`, esquema `grad`, `usesAppleSignIn`; `app.config.ts` adiciona os plugins do Google
+    Sign-In e do Google Maps (Android) quando as variáveis existem; `eas.json` com perfis development/preview/production.
+  - Pendente do dono: credenciais Google Cloud (OAuth Web/Android/iOS e chave do Maps), provedores no Supabase,
+    `eas init` e primeiro build (`docs/LOGIN_SOCIAL.md`). iOS exige Apple Developer Program.

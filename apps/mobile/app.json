@@ -1,7 +1,7 @@
 {
   "expo": {
     "name": "Grad",
-    "slug": "Grad",
+    "slug": "grad",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -10,7 +10,9 @@
       "supportsTablet": true,
       "infoPlist": {
         "NSLocationWhenInUseUsageDescription": "Usamos sua localização para mostrar o nível de segurança dos bairros próximos."
-      }
+      },
+      "bundleIdentifier": "com.flu3000.grad",
+      "usesAppleSignIn": true
     },
     "android": {
       "permissions": [
@@ -20,7 +22,8 @@
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#1B2738"
-      }
+      },
+      "package": "com.flu3000.grad"
     },
     "web": {
       "favicon": "./assets/favicon.png"
@@ -36,7 +39,9 @@
           "imageWidth": 200,
           "resizeMode": "contain"
         }
-      ]
-    ]
+      ],
+      "expo-apple-authentication"
+    ],
+    "scheme": "grad"
   }
 }

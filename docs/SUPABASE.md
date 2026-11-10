@@ -64,21 +64,12 @@ O MCP do Supabase não altera configurações de Auth. No painel do projeto `gra
 2. Salve. (Alternativa por linha de comando: `npx supabase login`, `npx supabase link --project-ref snuxiwwvlaryggezcezi`
    e `npx supabase config push`, que envia o `config.toml` — revise o diff que ele mostra antes de confirmar.)
 
-### Google (quando chegar a Fase 3.6)
-1. No [Google Cloud Console](https://console.cloud.google.com/), crie um projeto e configure a *OAuth consent screen*.
-2. Em *Credentials*, crie três *OAuth client IDs*: **Web** (usado pelo Supabase e como `webClientId` do
-   `@react-native-google-signin/google-signin`), **Android** (package name do app + SHA-1 do certificado do EAS) e
-   **iOS** (bundle identifier).
-3. No Supabase: *Authentication → Providers → Google*: ligue, cole o Client ID **Web** e o secret; em
-   *Authorized Client IDs* inclua também os IDs Android e iOS. Ative *Skip nonce check* só se o iOS exigir.
-4. No app: `signInWithIdToken({ provider: 'google', token: idToken })`; para converter convidado,
-   `linkIdentity({ provider: 'google', token: idToken })`.
-
-### Apple (quando chegar a Fase 3.6; exige conta Apple Developer paga)
-1. Em *Certificates, Identifiers & Profiles*, habilite **Sign in with Apple** no App ID do app.
-2. No Supabase: *Authentication → Providers → Apple*: ligue e, em *Client IDs*, coloque o bundle identifier.
-   No login nativo (`expo-apple-authentication`) não é preciso gerar o secret JWT; ele só é necessário para o fluxo web.
-3. No app: `signInWithIdToken({ provider: 'apple', token: identityToken, nonce })`.
+### Google e Apple
+Passo a passo (credenciais no Google Cloud/Apple, provedores no Supabase e app de desenvolvimento no EAS) em
+[`LOGIN_SOCIAL.md`](LOGIN_SOCIAL.md). Resumo do que fica no Supabase:
+- **Google:** Client IDs = ID do cliente Web (+ Android e iOS, separados por vírgula); Client Secret = segredo do cliente
+  Web; *Skip nonce check* ligado se usar iOS.
+- **Apple:** Client IDs = `com.flu3000.grad` (login nativo não precisa da chave secreta).
 
 ### Antes de lançar
 Ativar CAPTCHA (Cloudflare Turnstile) em *Authentication → Attack Protection* para o login anônimo.
