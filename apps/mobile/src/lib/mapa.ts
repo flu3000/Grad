@@ -26,6 +26,18 @@ export interface LocalInfo {
   contagens: Contagens | null;
 }
 
+/** Área aproximada de um hexágono H3 em cada resolução usada pelo app. */
+export const AREA_HEXAGONO: Record<Resolucao, string> = { 7: '5,2 km²', 8: '0,74 km²', 9: '0,11 km²' };
+
+/** Centro aproximado de um hexágono (média dos vértices; os hexágonos são pequenos). */
+export function centroDoHexagono(h: Hexagono) {
+  const n = h.coordenadas.length;
+  return {
+    latitude: h.coordenadas.reduce((s, c) => s + c.latitude, 0) / n,
+    longitude: h.coordenadas.reduce((s, c) => s + c.longitude, 0) / n,
+  };
+}
+
 /** Resolução H3 conforme o zoom (latitudeDelta da região visível). Ver docs/SUPABASE.md. */
 export function resolucaoParaZoom(latitudeDelta: number): Resolucao {
   if (latitudeDelta > 0.15) return 7;

@@ -4,11 +4,10 @@ import { useTheme } from 'styled-components/native';
 import Tela_Rolavel from '../../../components/Comum/Tela_Rolavel';
 import * as C from '../../../components/Comum/Tela_Rolavel/styles';
 import { useLocalAtual } from '../../../contexts/Local_Atual_Context';
-import { categoriasOrdenadas } from '../../../lib/categorias';
-import { NIVEL_INFO, corDoNivel } from '../../../theme/niveis';
+import Lista_Ocorrencias from '../../../components/Comum/Lista_Ocorrencias';
+import Selo_Nivel from '../../../components/Comum/Selo_Nivel';
+import { AREA_HEXAGONO } from '../../../lib/mapa';
 import * as S from './styles';
-
-const MAX_CATEGORIAS = 6;
 
 /** Detalhes do lugar onde o usuário está: distrito, subprefeitura, nível e principais ocorrências. */
 const Area = () => {
@@ -58,9 +57,6 @@ const Area = () => {
     );
   }
 
-  const categorias = categoriasOrdenadas(info.contagens).slice(0, MAX_CATEGORIAS);
-  const total = info.contagens?.total ?? 0;
-
   return (
     <Tela_Rolavel titulo="Sua área">
       <C.Secao>
@@ -72,15 +68,7 @@ const Area = () => {
       <C.Secao>
         <C.Subtitulo>Nível de perigo aqui</C.Subtitulo>
         {info.nivel ? (
-          <S.LinhaNivel>
-            <S.Selo $cor={corDoNivel(info.nivel)}>
-              <S.SeloTexto>{info.nivel}</S.SeloTexto>
-            </S.Selo>
-            <S.ColunaNivel>
-              <S.Nome>{NIVEL_INFO[info.nivel].rotulo}</S.Nome>
-              <C.TextoSecundario>{NIVEL_INFO[info.nivel].descricao}</C.TextoSecundario>
-            </S.ColunaNivel>
-          </S.LinhaNivel>
+          <Selo_Nivel nivel={info.nivel} />
         ) : (
           <C.Texto>Ainda não há dados para este ponto.</C.Texto>
         )}
@@ -88,20 +76,8 @@ const Area = () => {
       </C.Secao>
 
       <C.Secao>
-        <C.Subtitulo>Ocorrências em 2025 (raio de ~500 m)</C.Subtitulo>
-        {total === 0 ? (
-          <C.Texto>Nenhum boletim de ocorrência com localização neste trecho.</C.Texto>
-        ) : (
-          <>
-            <C.Texto>{`${total.toLocaleString('pt-BR')} boletins de ocorrência`}</C.Texto>
-            {categorias.map((c) => (
-              <S.LinhaCategoria key={c.nome}>
-                <C.TextoSecundario>{c.nome}</C.TextoSecundario>
-                <S.Quantidade>{c.quantidade.toLocaleString('pt-BR')}</S.Quantidade>
-              </S.LinhaCategoria>
-            ))}
-          </>
-        )}
+        <C.Subtitulo>{`Ocorrências em 2025 (hexágono de ${AREA_HEXAGONO[8]})`}</C.Subtitulo>
+        <Lista_Ocorrencias contagens={info.contagens} />
       </C.Secao>
 
       <C.TextoSecundario>
