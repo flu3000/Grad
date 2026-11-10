@@ -43,6 +43,7 @@ Pré-requisitos: Node.js 22.9+, npm e o app Expo Go no celular (ou emulador Andr
 
 ```bash
 npm run install:all          # instala as dependências do app e dos scripts
+cp apps/mobile/.env.example apps/mobile/.env   # preencha a chave publicável do Supabase
 npm run mobile:start         # abre o Expo (QR code para o Expo Go)
 npm run typecheck            # checagem de tipos do app e dos scripts
 ```
