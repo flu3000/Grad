@@ -19,7 +19,7 @@ export const Faixa = styled.View`
 `;
 
 export const Quadrado = styled.View<{ $cor: string }>`
-  width: 20px;
+  width: 18px;
   height: 18px;
   align-items: center;
   justify-content: center;
@@ -27,7 +27,7 @@ export const Quadrado = styled.View<{ $cor: string }>`
 `;
 
 export const Numero = styled.Text<{ $cor: string }>`
-  font-size: 10px;
+  font-size: 9px;
   font-weight: 700;
   color: ${({ $cor }) => $cor};
 `;

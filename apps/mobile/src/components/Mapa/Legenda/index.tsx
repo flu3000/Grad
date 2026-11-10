@@ -1,10 +1,10 @@
 import React, { useState } from 'react';
 import { useTheme } from 'styled-components/native';
 import { INFO_UNIDADE, TIPOS_UNIDADE } from '../../../lib/unidades';
-import { NIVEIS, NIVEL_INFO, corDoNivel, textoSobreNivel } from '../../../theme/niveis';
+import { NIVEIS, NIVEL_INFO, NIVEL_MAXIMO, corDoNivel, textoSobreNivel } from '../../../theme/niveis';
 import * as S from './styles';
 
-/** Legenda compacta: faixa com os 8 níveis (e as unidades de segurança, se ligadas). Toque para recolher/expandir. */
+/** Legenda compacta: faixa com os 10 níveis (e as unidades de segurança, se ligadas). Toque para recolher/expandir. */
 const Legenda = ({ comUnidades = false }: { comUnidades?: boolean }) => {
   const theme = useTheme();
   const [aberta, setAberta] = useState(true);
@@ -22,7 +22,7 @@ const Legenda = ({ comUnidades = false }: { comUnidades?: boolean }) => {
           </S.Faixa>
           <S.Extremos>
             <S.Texto>{NIVEL_INFO[1].rotulo}</S.Texto>
-            <S.Texto>{NIVEL_INFO[8].rotulo}</S.Texto>
+            <S.Texto>{NIVEL_INFO[NIVEL_MAXIMO].rotulo}</S.Texto>
           </S.Extremos>
         </>
       )}

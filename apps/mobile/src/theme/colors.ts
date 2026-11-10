@@ -8,17 +8,19 @@
 
 // Iguais nos dois temas.
 const comuns = {
-  // Níveis de perigo: escala sequencial amarelo → laranja → vermelho (ColorBrewer YlOrRd), com o nível 1 neutro.
-  // Nível 1 é neutro de propósito: significa "poucos ou nenhum BO", não "seguro".
+  // Níveis de perigo: escala sequencial amarelo → laranja → vermelho (ColorBrewer YlOrRd, 9 classes), com o nível 1
+  // neutro de propósito: significa "poucos ou nenhum BO", não "seguro".
   safetyLevels: {
     level1: '#9AA4B1', // Poucos registros
-    level2: '#FFFFB2', // Muito baixo
-    level3: '#FED976', // Baixo
-    level4: '#FEB24C', // Moderado
-    level5: '#FD8D3C', // Elevado
-    level6: '#FC4E2A', // Alto
-    level7: '#E31A1C', // Muito alto
-    level8: '#B10026', // Crítico
+    level2: '#FFFFCC', // Muito baixo
+    level3: '#FFEDA0', // Baixo
+    level4: '#FED976', // Médio-baixo
+    level5: '#FEB24C', // Médio
+    level6: '#FD8D3C', // Médio-alto
+    level7: '#FC4E2A', // Alto
+    level8: '#E31A1C', // Muito alto
+    level9: '#BD0026', // Grave
+    level10: '#800026', // Crítico
   },
   // Texto sobre a cor de cada nível (escuro nos tons claros, branco nos vermelhos)
   levelText: {
@@ -27,9 +29,11 @@ const comuns = {
     level3: '#1C2026',
     level4: '#1C2026',
     level5: '#1C2026',
-    level6: '#FFFFFF',
+    level6: '#1C2026',
     level7: '#FFFFFF',
     level8: '#FFFFFF',
+    level9: '#FFFFFF',
+    level10: '#FFFFFF',
   },
   // Marcadores das unidades de segurança no mapa
   unidades: {
