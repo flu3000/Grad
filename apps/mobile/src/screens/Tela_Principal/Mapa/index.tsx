@@ -203,7 +203,7 @@ const Mapa = ({ navigation }: TelaDaAba<'Mapa'>) => {
       <S.Topo $topInset={insets.top}>
         <Card_Nivel onPress={() => navigation.navigate('Area')} />
         <S.LinhaInferior>
-          {config.mostrarLegenda ? <Legenda comUnidades={config.mostrarUnidades} /> : <S.Espaco />}
+          <Legenda comUnidades={config.mostrarUnidades} />
           <S.Status>
             {carregando && <ActivityIndicator size="small" color={theme.colors.textPrimary} />}
             {erro && !carregando && (

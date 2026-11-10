@@ -11,7 +11,6 @@ export interface Configuracoes {
   intensidade: Intensidade;
   /** Mostrar as unidades de polícia, GCM e bombeiros no mapa (com zoom de bairro ou mais próximo). */
   mostrarUnidades: boolean;
-  mostrarLegenda: boolean;
   /** Ao abrir o mapa, centralizar na localização do usuário. */
   centralizarAoAbrir: boolean;
 }
@@ -20,11 +19,21 @@ const PADRAO: Configuracoes = {
   tema: 'sistema',
   intensidade: 'normal',
   mostrarUnidades: true,
-  mostrarLegenda: true,
   centralizarAoAbrir: true,
 };
 
 const CHAVE = 'grad:configuracoes';
+
+/** Lê a configuração salva aceitando versões antigas (ex.: intensidade "forte" e "mostrarLegenda", que saíram). */
+function sanear(salvo: Partial<Configuracoes>): Configuracoes {
+  const c = { ...PADRAO, ...salvo };
+  return {
+    tema: ['sistema', 'claro', 'escuro'].includes(c.tema) ? c.tema : PADRAO.tema,
+    intensidade: c.intensidade === 'suave' ? 'suave' : 'normal',
+    mostrarUnidades: c.mostrarUnidades !== false,
+    centralizarAoAbrir: c.centralizarAoAbrir !== false,
+  };
+}
 
 interface ConfigState {
   config: Configuracoes;
@@ -46,7 +55,7 @@ export function ConfigProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     AsyncStorage.getItem(CHAVE)
       .then((salvo) => {
-        if (salvo) setConfig({ ...PADRAO, ...(JSON.parse(salvo) as Partial<Configuracoes>) });
+        if (salvo) setConfig(sanear(JSON.parse(salvo) as Partial<Configuracoes>));
       })
       .catch(() => undefined) // configuração corrompida: fica o padrão
       .finally(() => setCarregada(true));

@@ -88,7 +88,7 @@ const Perfil = () => {
           {googleDisponivel && (
             <C.Botao onPress={() => entrar('google')} disabled={!!entrando} $desativado={!!entrando}>
               {entrando === 'google' ? (
-                <ActivityIndicator color={theme.colors.primary} />
+                <ActivityIndicator color={theme.colors.onAccent} />
               ) : (
                 <C.BotaoTexto>Continuar com Google</C.BotaoTexto>
               )}
@@ -139,7 +139,6 @@ const Perfil = () => {
           opcoes={[
             { valor: 'suave', texto: 'Suaves' },
             { valor: 'normal', texto: 'Normais' },
-            { valor: 'forte', texto: 'Fortes' },
           ]}
         />
         <Linha_Interruptor
@@ -147,11 +146,6 @@ const Perfil = () => {
           descricao="Aparecem ao aproximar o mapa de um bairro."
           valor={config.mostrarUnidades}
           onMudar={(mostrarUnidades) => atualizar({ mostrarUnidades })}
-        />
-        <Linha_Interruptor
-          rotulo="Mostrar legenda no mapa"
-          valor={config.mostrarLegenda}
-          onMudar={(mostrarLegenda) => atualizar({ mostrarLegenda })}
         />
         <Linha_Interruptor
           rotulo="Centralizar em mim ao abrir"
