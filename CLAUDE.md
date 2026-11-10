@@ -7,15 +7,17 @@ Grad: app mobile que mostra um mapa de São Paulo colorido por nível de perigo,
 de boletins de ocorrência da SSP-SP. Projeto pessoal; idioma do código e dos commits: **português**.
 
 ## Monorepo
-- `apps/mobile` — Expo SDK 58, React Native 0.88, React 19.3, TypeScript estrito, styled-components (tema em
-  `src/theme/colors.js`, níveis em `src/theme/niveis.ts`), react-native-maps, expo-location, React Navigation (abas),
-  `@supabase/supabase-js`. Entrada: `index.js` → `App.tsx` → `src/navigation/Abas.tsx` (Mapa, Área, Perfil).
+- `apps/mobile` — Expo SDK 58, React Native 0.88, React 19.3, TypeScript estrito, styled-components (temas claro e
+  escuro em `src/theme/colors.ts`, mesmas chaves; níveis e opacidades em `src/theme/niveis.ts`), react-native-maps,
+  expo-location, React Navigation (abas), `@supabase/supabase-js`. Entrada: `index.js` → `App.tsx` →
+  `src/navigation/Abas.tsx` (Mapa, Área, Emergência, Perfil). Configurações (tema, intensidade, unidades no mapa,
+  legenda, centralizar) em `src/contexts/Config_Context.tsx`, salvas no AsyncStorage.
   Supabase em `src/lib/supabase.ts` (sessão criptografada: chave no SecureStore, dados no AsyncStorage) e chamadas do
   mapa em `src/lib/mapa.ts`; estado global em `src/contexts/` (sessão de convidado e local atual).
 - `scripts` — ingestão local (TypeScript + tsx): GeoSampa e SSP-SP → Supabase. Pesos em `scripts/src/config/crimeWeights.ts`.
 - `supabase` — backend: Postgres + PostGIS + Supabase Auth (sa-east-1), sem servidor próprio (`docs/DECISAO_BACKEND.md`).
   A antiga API Express + MongoDB foi removida na Fase 2.3 (está no histórico do Git); o Railway foi abandonado.
-- `data` — GeoJSON da GeoSampa e do Rio (sem uso); a planilha da SSP-SP fica em `data/SSP-SP/`, fora do Git.
+- `data` — GeoJSON da GeoSampa (distritos, subprefeituras e `seguranca/`: PM, Polícia Civil, GCM e Bombeiros) e do Rio (sem uso); a planilha da SSP-SP fica em `data/SSP-SP/`, fora do Git.
 - Cada pacote (`apps/mobile`, `scripts`) tem seu próprio `package.json` e `package-lock.json` (não há npm workspaces de propósito:
   evita problemas de hoisting com o Metro/Expo).
 
@@ -27,7 +29,8 @@ de boletins de ocorrência da SSP-SP. Projeto pessoal; idioma do código e dos c
 
 ## Comandos
 - Instalar: `npm run install:all` (ou `npm ci` dentro de cada pacote)
-- Dados (com `scripts/.env`): `npm run data:import-geo` e `npm run data:import-crimes` (simulam; `-- --gravar` grava)
+- Dados (com `scripts/.env`): `npm run data:import-geo`, `npm run data:import-crimes` e `npm run data:import-postos`
+  (simulam; `-- --gravar` grava)
 - Mobile: `npm run mobile:start` abre no app de desenvolvimento; `npm run mobile:go` abre no Expo Go (validar deps nativas com `npx expo install --check` em `apps/mobile`);
   validar o build sem celular: `npx expo export --platform android --platform ios` em `apps/mobile`
 - Checagem de tipos (rodar antes de todo commit): `npm run typecheck`
@@ -61,6 +64,7 @@ de boletins de ocorrência da SSP-SP. Projeto pessoal; idioma do código e dos c
 - React Native não tem `localStorage` nem `window.location`: tokens ficam no `LargeSecureStore` de `src/lib/supabase.ts`
   e a troca de tela é pelo React Navigation.
 - Para dependências nativas no app, use `npx expo install <pacote>` (escolhe a versão compatível com o SDK).
+- Este ambiente da nuvem ("Grad") libera GeoSampa e o projeto Supabase; Node precisa de `NODE_USE_ENV_PROXY=1` para usar o proxy.
 
 ## Estado atual e próximos passos
 Fases 0 e 1 concluídas. Projeto Supabase `grad` (ref `snuxiwwvlaryggezcezi`, sa-east-1); login anônimo e
@@ -73,5 +77,7 @@ card do local atual, balão com estatísticas do hexágono tocado e abas Área e
 e-mail/senha removidas (decisão do dono). Fase 3.6 em código: login Google/Apple (`src/lib/loginSocial.ts`, vincula o
 convidado com `linkIdentity`), `expo-dev-client`, `eas.json` e `app.config.ts` (plugins que dependem de credenciais);
 falta o dono criar as credenciais e o primeiro build — passo a passo em `docs/LOGIN_SOCIAL.md`.
+Extras (antes do login social): unidades de segurança no mapa (tabela `security_units` + `security_units_in_view`, 340
+unidades da GeoSampa, sem telefone próprio), aba Emergência com telefones úteis e configurações com tema claro/escuro.
 Ver `docs/DIAGNOSTICO.md` (bugs conhecidos), `docs/DECISAO_BACKEND.md` (por que Supabase) e
 `docs/PROMPT_CONTINUIDADE.md` (roadmap).

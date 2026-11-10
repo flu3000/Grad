@@ -199,3 +199,19 @@ funcionando no app.
     Sign-In e do Google Maps (Android) quando as variáveis existem; `eas.json` com perfis development/preview/production.
   - Pendente do dono: credenciais Google Cloud (OAuth Web/Android/iOS e chave do Maps), provedores no Supabase,
     `eas init` e primeiro build (`docs/LOGIN_SOCIAL.md`). iOS exige Apple Developer Program.
+
+## Atualização — 10/11/2026 (extras antes do login social)
+
+- **Unidades de segurança no mapa:** 340 unidades oficiais da GeoSampa (PM 159, Polícia Civil 93, GCM 48, Bombeiros 40)
+  em `security_units`. Marcadores com ícone por força aparecem com zoom de bairro (`latitudeDelta` ≤ 0,15); toque abre
+  balão com endereço, bairro, distrito, CEP, "Como chegar" e "Ligar".
+  - A base **não tem telefones** das unidades: o botão liga para o número geral (190, 197, 153, 193). O OpenStreetMap
+    (Overpass) poderia completar, mas recusou a conexão a partir do ambiente da nuvem; tentar de outro lugar.
+  - Delegacias da Mulher (DDM) **não** estão na camada da Polícia Civil da GeoSampa.
+  - Nomes/endereços padronizados no script (caixa, "R" → "Rua", repetições como "Rua Rua"); acentos ausentes na fonte.
+- **Aba Emergência:** 190, 192, 193, 197, 181, 153, 191, 180, 100, 188, 199, 156 com toque para ligar (com confirmação)
+  e link para a Delegacia Eletrônica.
+- **Configurações (Perfil):** tema Sistema/Claro/Escuro (com mapa claro/escuro), intensidade das cores dos hexágonos,
+  unidades no mapa, legenda e centralizar ao abrir; salvas no aparelho.
+- Testado deste ambiente pela internet: `hexagons_in_view`, `locate_point`, `security_units_in_view`, login anônimo e
+  bloqueio de escrita do cliente — todos ok.

@@ -20,6 +20,7 @@ supabase/
 | `20261110005703_funcoes_mapa` | Funções `hexagons_in_view` e `locate_point` (security invoker, `search_path` vazio) |
 | `20261110012322_resolucao_dinamica` | As duas funções passam a receber a resolução H3 (`res`, padrão 8) |
 | `20261110121600_locate_point_com_contagens` | `locate_point` devolve também `counts` (total, peso e BOs por categoria) para a aba Área |
+| `20261110140840_unidades_de_seguranca` | Tabela `security_units` (PM, Polícia Civil, GCM e Bombeiros da GeoSampa) e função `security_units_in_view` |
 | `20261110015508_corrige_geometrias_invalidas` | Gatilho que aplica `st_makevalid` em distritos/subprefeituras inválidos ao gravar (Lajeado e Guaianases vêm com autointerseção da GeoSampa) |
 
 A extensão `h3` **não** está disponível no projeto (só PostGIS 3.3.7). Os índices H3 e os polígonos dos
@@ -45,6 +46,15 @@ supabase.rpc('hexagons_in_view', { min_lng, min_lat, max_lng, max_lat, res: 8, m
 supabase.rpc('locate_point', { lat, lng, res: 8 })
 // → [{ district_id, district_name, subprefecture_id, subprefecture_name, h3_index, level, score, counts }]
 ```
+
+### Unidades de segurança
+
+```ts
+supabase.rpc('security_units_in_view', { min_lng, min_lat, max_lng, max_lat, max_units: 400 })
+// → [{ id, kind, name, address, neighborhood, postal_code, phone, district_name, lat, lng }]
+```
+
+`kind`: `policia_militar`, `policia_civil`, `gcm` ou `bombeiros`. Carga com `npm run data:import-postos -- --gravar`.
 
 ### Zoom dinâmico
 `hex_cells` guarda as resoluções 7 (≈ 5,2 km² por hexágono, 373 em SP), 8 (≈ 0,74 km², 2.278) e 9 (≈ 0,11 km², 14.985).
@@ -75,5 +85,6 @@ Passo a passo (credenciais no Google Cloud/Apple, provedores no Supabase e app d
 Ativar CAPTCHA (Cloudflare Turnstile) em *Authentication → Attack Protection* para o login anônimo.
 
 ## Advisors (10/11/2026)
+- Segurança: `auth_leaked_password_protection` (WARN) — só vale para login por e-mail/senha, que o app não usa.
 - Segurança: nenhum aviso.
 - Performance: apenas `unused_index` (INFO) em índices de tabelas ainda vazias — esperado; reavaliar após a importação.

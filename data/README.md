@@ -5,6 +5,7 @@ Fontes brutas usadas pelos scripts de `scripts/` para alimentar o Supabase.
 | Pasta | Conteúdo | No Git? |
 |---|---|---|
 | `geosampa/` | Distritos (96) e subprefeituras (32) de São Paulo, em **EPSG:31983 (SIRGAS 2000 / UTM 23S)**. Convertidos para WGS84 por `scripts/importGeo.ts`. | Sim |
+| `geosampa/seguranca/` | Unidades de segurança pública (GeoSampa, EPSG:31983): Polícia Militar (159), Polícia Civil (93), GCM (48) e Bombeiros (40), com nome, endereço, bairro e CEP. **Sem telefone** e sem Delegacias da Mulher. Atualizar com `npm run data:import-postos -- --baixar`. | Sim |
 | `rio/` | Bairros (166) e regiões administrativas (33) do Rio de Janeiro, já em WGS84. **Ainda não usados.** | Sim |
 | `SSP-SP/` | Planilha de boletins de ocorrência da SSP-SP 2025 (~100 MB, ~1,16 milhão de linhas). Lida por `scripts/importCrimes.ts`. | **Não** |
 
