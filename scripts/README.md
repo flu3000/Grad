@@ -52,10 +52,10 @@ Opções: `--arquivo=caminho.xlsx`, `--periodo=2025` (só conta ocorrências des
    (mesmo `NUM_BO` + `ANO_BO` + delegacia com a mesma categoria conta uma vez, mesmo em abas diferentes).
 2. Classifica cada BO pela primeira regra de `src/config/crimeWeights.ts` que casar com `RUBRICA | NATUREZA_APURADA`.
 3. Soma os pesos por hexágono H3 nas resoluções 7, 8 e 9 e divide pela área do hexágono → **score = peso/km²**.
-4. **Nível 1..8:** hexágono sem ocorrência = 1; os demais pelos percentis 15, 30, 45, 60, 75, 87 e 95 do score dos
-   hexágonos da resolução 8 que têm BO com localização (faixas mais estreitas no topo: o nível 8 são os 5% mais
-   perigosos). Os mesmos cortes (em peso/km²) valem para 7 e 9, para a cor de um lugar não mudar quando o zoom troca de
-   resolução. Os distribuídos somam na nota, mas não entram no cálculo dos cortes.
+4. **Nível 1..10:** hexágono sem ocorrência = 1; os demais pelos percentis 15, 30, 45, 60, 72, 82, 90, 95 e 98 do
+   score dos hexágonos com BO de coordenada, calculados **separadamente em cada resolução** (cada zoom compara áreas
+   do mesmo tamanho; nível 10 = 2% mais perigosos). Com cortes únicos, o hexágono pequeno concentrava densidades
+   extremas no nível mais alto. Os distribuídos somam na nota, mas não entram no cálculo dos cortes.
 5. **Estupro sem coordenada** (a SSP não publica a localização de crimes sexuais): se o BO é da capital, em espaço de
    circulação (via pública, terminal, comércio, lazer… — residência, escola, saúde e templo não contam) e o BAIRRO casa com o nome de um distrito
    (com abreviações como "Vl." → "Vila"), o peso 9 é dividido igualmente entre os hexágonos do distrito.

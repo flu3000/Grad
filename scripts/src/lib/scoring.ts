@@ -3,8 +3,6 @@ import { CRIME_WEIGHTS, type CrimeCategory } from '../config/crimeWeights';
 
 /** Resoluções gravadas: 7 (zoom afastado), 8 (padrão) e 9 (zoom próximo). */
 export const RESOLUTIONS = [7, 8, 9] as const;
-/** Resolução cujos quantis definem os cortes de nível, aplicados igual às outras. */
-export const REFERENCE_RESOLUTION = 8;
 
 export interface CellStats {
   weight: number;
@@ -65,15 +63,15 @@ export function quantile(sorted: number[], q: number): number {
   return sorted[lo] + (sorted[hi] - sorted[lo]) * (pos - lo);
 }
 
-/** Percentis dos cortes entre os 8 níveis: faixas mais estreitas no topo, onde a diferença entre lugares é maior. */
-export const QUANTIS_DOS_CORTES = [0.15, 0.3, 0.45, 0.6, 0.75, 0.87, 0.95] as const;
+/** Percentis dos cortes entre os 10 níveis: faixas mais estreitas no topo, onde a diferença entre lugares é maior. */
+export const QUANTIS_DOS_CORTES = [0.15, 0.3, 0.45, 0.6, 0.72, 0.82, 0.9, 0.95, 0.98] as const;
 export const TOTAL_NIVEIS = QUANTIS_DOS_CORTES.length + 1;
-export type Nivel = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8;
+export type Nivel = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10;
 
 /**
- * Cortes dos níveis 1..8: percentis (QUANTIS_DOS_CORTES) do score dos hexágonos da resolução de referência que têm
- * BOs com localização. Usar os mesmos cortes (em peso/km²) em todas as resoluções mantém a cor de um lugar coerente
- * quando o zoom muda. Mesma regra da migration escala_de_8_niveis.
+ * Cortes dos níveis 1..10: percentis (QUANTIS_DOS_CORTES) do score dos hexágonos COM BO de coordenada, calculados
+ * separadamente em cada resolução (cada zoom compara áreas do mesmo tamanho; com cortes únicos, o hexágono pequeno
+ * concentrava densidades extremas no nível mais alto). Mesma regra da migration escala_de_10_niveis_por_resolucao.
  */
 export function levelBreaks(densities: number[]): number[] {
   const sorted = densities.filter((d) => d > 0).sort((a, b) => a - b);
