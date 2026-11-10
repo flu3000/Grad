@@ -13,12 +13,13 @@ import booleanPointInPolygon from '@turf/boolean-point-in-polygon';
 import { point } from '@turf/helpers';
 import { cellToBoundary, polygonToCellsExperimental, POLYGON_TO_CELLS_FLAGS } from 'h3-js';
 import type { MultiPolygon } from 'geojson';
-import { CRIME_WEIGHTS, classifyCrime, normalizeText, type CrimeCategory } from './src/config/crimeWeights';
+import { CRIME_WEIGHTS, DISTRIBUIR_SEM_LOCALIZACAO, classifyCrime, normalizeText, type CrimeCategory } from './src/config/crimeWeights';
 import { readGeoSampa } from './src/lib/city';
-import { DiagnosticoSemLocalizacao } from './src/lib/semLocalizacao';
+import { DiagnosticoSemLocalizacao, normalizarBairro } from './src/lib/semLocalizacao';
 import { polygonToEwkt } from './src/lib/geometry';
 import { arg, dataDir, outDir } from './src/lib/paths';
 import {
+  addDistributed,
   addOccurrence,
   density,
   levelBreaks,
@@ -95,7 +96,20 @@ async function main() {
   // Município = união dos 96 distritos (WGS84).
   const distritosGeo = readGeoSampa<{ nm_distrito_municipal: string }>('distritos');
   const districts: District[] = distritosGeo.map((f) => ({ geometry: f.geometry, bbox: bboxOf(f.geometry) }));
-  const semLoc = new DiagnosticoSemLocalizacao(new Set(distritosGeo.map((f) => normalizeText(f.properties.nm_distrito_municipal))));
+  const nomeDistrito = (f: (typeof distritosGeo)[number]) => normalizarBairro(f.properties.nm_distrito_municipal);
+  const semLoc = new DiagnosticoSemLocalizacao(new Set(distritosGeo.map(nomeDistrito)));
+  // Hexágonos de cada distrito (centro dentro do distrito; se nenhum, os que tocam), por resolução.
+  const hexDoDistrito = new Map<string, Map<number, string[]>>();
+  for (const f of distritosGeo) {
+    const porRes = new Map<number, string[]>();
+    for (const res of RESOLUTIONS) {
+      const doCentro = (flag: string) => [...new Set(f.geometry.coordinates.flatMap((poly) => polygonToCellsExperimental(poly, res, flag, true)))];
+      const cells = doCentro(POLYGON_TO_CELLS_FLAGS.containmentCenter);
+      porRes.set(res, cells.length ? cells : doCentro(POLYGON_TO_CELLS_FLAGS.containmentOverlapping));
+    }
+    hexDoDistrito.set(nomeDistrito(f), porRes);
+  }
+  const distribuidos: Partial<Record<CrimeCategory, number>> = {};
   const city = districts.reduce(
     (b, d) => [Math.min(b[0], d.bbox[0]), Math.min(b[1], d.bbox[1]), Math.max(b[2], d.bbox[2]), Math.max(b[3], d.bbox[3])],
     [Infinity, Infinity, -Infinity, -Infinity],
@@ -174,7 +188,12 @@ async function main() {
       if (!Number.isFinite(lat) || !Number.isFinite(lng) || lat === 0 || lng === 0) {
         stats.semLocalizacao++;
         const txt = (c: string | undefined) => (c && cols![c] !== undefined ? cellText(values[cols![c]]) : '');
-        semLoc.registrar(classifyCrime(txt('RUBRICA'), txt('NATUREZA_APURADA')), txt(semLoc.cidade), txt('BAIRRO'), txt('DESCR_TIPOLOCAL'));
+        const categoria = classifyCrime(txt('RUBRICA'), txt('NATUREZA_APURADA'));
+        const cls = semLoc.registrar(categoria, txt(semLoc.cidade), txt('BAIRRO'), txt('DESCR_TIPOLOCAL'));
+        if (DISTRIBUIR_SEM_LOCALIZACAO.includes(categoria) && cls.capital && cls.publico && cls.distrito) {
+          addDistributed(agg, hexDoDistrito.get(cls.distrito)!, categoria);
+          distribuidos[categoria] = (distribuidos[categoria] ?? 0) + 1;
+        }
         continue;
       }
       if (!insideCity(lat, lng)) {
@@ -234,7 +253,14 @@ async function main() {
         geom: polygonToEwkt(cellToBoundary(h, true)),
         score: Number(score.toFixed(4)),
         level,
-        counts: { total: s?.total ?? 0, peso: s?.weight ?? 0, ...(s?.byCategory ?? {}) },
+        counts: {
+          total: s?.total ?? 0,
+          peso: Number((s?.weight ?? 0).toFixed(3)),
+          ...(s?.byCategory ?? {}),
+          ...(s && Object.keys(s.distributed).length
+            ? { distribuido_pelo_distrito: Object.fromEntries(Object.entries(s.distributed).map(([k, v]) => [k, Number(v.toFixed(3))])) }
+            : {}),
+        },
         period: periodo,
         updated_at: new Date().toISOString(),
       });
@@ -250,6 +276,7 @@ async function main() {
     duplicadosVerificadosPor: [...colunasDoBo],
     semLocalizacao_diagnostico: semLoc.resumo(),
     porCategoria,
+    semLocalizacao_distribuidosPeloDistrito: distribuidos,
     pesos: CRIME_WEIGHTS,
     cortesDeNivel_pesoPorKm2: breaks.map((b) => Number(b.toFixed(2))),
     hexagonos: Object.fromEntries(RESOLUTIONS.map((r) => [r, { total: niveis[r].reduce((a, b) => a + b, 0), porNivel: niveis[r] }])),
@@ -288,7 +315,8 @@ async function main() {
   );
   const lista = (xs: [string, number][]) => xs.map(([k, n]) => `${k} (${n})`).join('; ');
   console.log(`  por categoria: ${lista(Object.entries(diag.daCapitalPorCategoria) as [string, number][])}`);
-  console.log(`  estupro por tipo de local: ${lista(diag.estupro_tipoDeLocal)}`);
+  console.log(`  estupro por tipo de local ([público] = conta): ${lista(diag.estupro_tipoDeLocal)}`);
+  console.log(`  distribuídos pelos hexágonos do distrito (capital + local público + bairro = distrito): ${lista(Object.entries(distribuidos) as [string, number][]) || 'nenhum'}`);
   console.log(`  estupro, bairros que não casam com distrito (top 15): ${lista(diag.estupro_bairrosQueNaoCasam_top30.slice(0, 15))}`);
   console.log(`Textos que caíram em "outros" (top 10): ${lista(report.textosEmOutros_top50.slice(0, 10))}`);
   console.log('Cortes de nível (peso/km²):', report.cortesDeNivel_pesoPorKm2);

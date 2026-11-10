@@ -1,15 +1,45 @@
 import { normalizeText, type CrimeCategory } from '../config/crimeWeights';
 
 /**
- * Diagnóstico dos BOs sem coordenada (só relatório, não entra na nota). Responde se dá para
- * aproveitá-los distribuindo o peso pelo distrito: quantos são da capital, de que tipo, se o
- * BAIRRO casa com o nome de um distrito e em que tipo de local aconteceram.
+ * BOs sem coordenada: identifica se são da capital, de que distrito (pelo BAIRRO) e se ocorreram em local
+ * público. Usado para distribuir o peso pelos hexágonos do distrito (categorias em
+ * DISTRIBUIR_SEM_LOCALIZACAO) e para o diagnóstico do relatório.
  */
 const CAPITAL = /^(S\.? ?PAULO|SAO PAULO)$/;
+
+// Locais onde o crime indica perigo para quem circula. Residência, condomínio, hotel etc. ficam de fora.
+// Lista por inclusão (conservadora): tipos não listados não contam; o relatório mostra o que ficou de fora.
+const LOCAL_PUBLICO =
+  /VIA PUBLICA|\bRUA\b|AVENIDA|CALCADA|PRACA|PARQUE|TRANSPORTE|TERMINAL|ESTACAO|METRO|TREM|ONIBUS|PONTO DE ONIBUS|RODOVIA|ESTRADA|VIADUTO|PASSARELA|TUNEL|COMERCIO|COMERCIAL|LOJA|SHOPPING|MERCADO|BAR\b|RESTAURANTE|ESTACIONAMENTO|AREA NAO OCUPADA|TERRENO BALDIO|MATAGAL|LAZER|ESTABELECIMENTO DE ENSINO|ESCOLA|UNIVERSIDADE|REPARTICAO|SAUDE|HOSPITAL|TEMPLO|IGREJA|EVENTO/;
+
+// Abreviações comuns no campo BAIRRO, para casar com o nome oficial do distrito.
+const ABREVIACOES: [RegExp, string][] = [
+  [/\bVL\b\.?/g, 'VILA'],
+  [/\bJD\b\.?|\bJARD\b\.?/g, 'JARDIM'],
+  [/\bPQ\b\.?|\bPQUE\b\.?/g, 'PARQUE'],
+  [/\bCID\b\.?/g, 'CIDADE'],
+  [/\bSTO\b\.?/g, 'SANTO'],
+  [/\bSTA\b\.?/g, 'SANTA'],
+  [/\bS\b\.?(?= )/g, 'SAO'],
+];
+
+export function normalizarBairro(nome: string): string {
+  let n = normalizeText(nome).replace(/[`´'’]/g, '');
+  for (const [re, sub] of ABREVIACOES) n = n.replace(re, sub);
+  return n.replace(/[^A-Z0-9 ]/g, ' ').replace(/\s+/g, ' ').trim();
+}
+
+export const ehLocalPublico = (tipoLocal: string) => LOCAL_PUBLICO.test(normalizeText(tipoLocal));
 
 type Contagem = Map<string, number>;
 const inc = (m: Contagem, k: string) => m.set(k, (m.get(k) ?? 0) + 1);
 const top = (m: Contagem, n: number) => [...m].sort((a, b) => b[1] - a[1]).slice(0, n);
+
+export interface Classificacao {
+  capital: boolean;
+  distrito: string | undefined; // nome normalizado do distrito, se o BAIRRO casar
+  publico: boolean;
+}
 
 export class DiagnosticoSemLocalizacao {
   private colunaCidade: string | undefined;
@@ -31,20 +61,24 @@ export class DiagnosticoSemLocalizacao {
     return this.colunaCidade;
   }
 
-  registrar(category: CrimeCategory, cidade: string, bairro: string, tipoLocal: string) {
+  registrar(category: CrimeCategory, cidade: string, bairro: string, tipoLocal: string): Classificacao {
     const c = normalizeText(cidade);
     inc(this.porCidade, c || '(vazio)');
-    if (this.colunaCidade && !CAPITAL.test(c)) return;
+    // Sem coluna de cidade não há como saber se o BO é da capital: não aproveita.
+    const capital = !!this.colunaCidade && CAPITAL.test(c);
+    const publico = ehLocalPublico(tipoLocal);
+    if (!capital) return { capital, distrito: undefined, publico };
     this.totalCapital++;
     inc(this.capitalPorCategoria, category);
-    const b = normalizeText(bairro);
-    const casa = this.nomesDistritos.has(b);
+    const b = normalizarBairro(bairro);
+    const distrito = this.nomesDistritos.has(b) ? b : undefined;
     const r = (this.bairroCasaComDistrito[category] ??= { sim: 0, nao: 0 });
-    casa ? r.sim++ : r.nao++;
+    distrito ? r.sim++ : r.nao++;
     if (category === 'estupro') {
-      inc(this.tipoLocalEstupro, normalizeText(tipoLocal) || '(vazio)');
-      if (!casa) inc(this.bairrosSemDistrito, b || '(vazio)');
+      inc(this.tipoLocalEstupro, `${normalizeText(tipoLocal) || '(vazio)'}${publico ? ' [público]' : ''}`);
+      if (!distrito) inc(this.bairrosSemDistrito, b || '(vazio)');
     }
+    return { capital, distrito, publico };
   }
 
   resumo() {
@@ -54,7 +88,7 @@ export class DiagnosticoSemLocalizacao {
       daCapital: this.totalCapital,
       daCapitalPorCategoria: Object.fromEntries(top(this.capitalPorCategoria, 50)),
       bairroCasaComNomeDeDistrito: this.bairroCasaComDistrito,
-      estupro_tipoDeLocal: top(this.tipoLocalEstupro, 15),
+      estupro_tipoDeLocal: top(this.tipoLocalEstupro, 25),
       estupro_bairrosQueNaoCasam_top30: top(this.bairrosSemDistrito, 30),
     };
   }

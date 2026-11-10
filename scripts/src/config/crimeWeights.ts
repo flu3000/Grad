@@ -1,7 +1,7 @@
 /**
  * Pesos por tipo de crime, usados para calcular a nota de perigo de cada hexágono.
- * Aprovados pelo dono do projeto em 10/11/2026. Extorsão mediante sequestro, porte de arma, tráfico e
- * culposos adicionados depois do primeiro relatório com a planilha real (aguardando aprovação).
+ * Aprovados pelo dono do projeto em 10/11/2026 (extorsão mediante sequestro, arma, tráfico e culposo
+ * acrescentados depois do primeiro relatório com a planilha real, também aprovados).
  *
  * As regras são testadas EM ORDEM contra o texto `RUBRICA | NATUREZA_APURADA` normalizado
  * (maiúsculas, sem acento); vale a primeira que casar. Por isso as mais específicas vêm antes
@@ -30,7 +30,7 @@ export type CrimeCategory =
 export const CRIME_WEIGHTS: Record<CrimeCategory, number> = {
   latrocinio: 10,
   homicidio_doloso: 10,
-  estupro: 9, // a planilha da SSP não traz localização de crimes sexuais: na prática fica zerado
+  estupro: 9, // a SSP não publica coordenada de crimes sexuais: entram pelo distrito (ver abaixo)
   extorsao_sequestro: 9,
   lesao_seguida_morte: 8,
   roubo_veiculo: 6,
@@ -41,10 +41,16 @@ export const CRIME_WEIGHTS: Record<CrimeCategory, number> = {
   furto_outros: 1,
   porte_arma: 3,
   trafico: 2,
-  culposo: 0, // lesão/homicídio culposo (quase todo de trânsito): não é perigo de crime
+  culposo: 0, // lesão/homicídio culposo, sem intenção (quase todo de trânsito): risco de acidente, não de crime
   outros: 0.5, // infrações leves e demais crimes
   nao_criminal: 0, // registros que não indicam perigo (perda de documento, desaparecimento, achado...)
 };
+
+/**
+ * Categorias cujos BOs SEM coordenada são aproveitados: se forem da capital, em local público e o BAIRRO casar
+ * com o nome de um distrito, o peso é dividido entre os hexágonos do distrito.
+ */
+export const DISTRIBUIR_SEM_LOCALIZACAO: CrimeCategory[] = ['estupro'];
 
 export const CRIME_RULES: [CrimeCategory, RegExp][] = [
   ['nao_criminal', /\b(PERDA|EXTRAVIO|DESAPARECIMENTO|ENCONTRO DE|ACHADO|LOCALIZACAO DE|MORTE SUSPEITA|MORTE NATURAL|SUICIDIO|NAO CRIMINAL|FATO ATIPICO)\b/],

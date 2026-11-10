@@ -10,7 +10,11 @@ export interface CellStats {
   weight: number;
   total: number;
   byCategory: Partial<Record<CrimeCategory, number>>;
+  /** Fração de BOs sem coordenada distribuídos pelo distrito (ver addDistributed). */
+  distributed: Partial<Record<CrimeCategory, number>>;
 }
+
+const emptyStats = (): CellStats => ({ weight: 0, total: 0, byCategory: {}, distributed: {} });
 
 export type Aggregation = Map<number, Map<string, CellStats>>;
 
@@ -23,10 +27,27 @@ export function addOccurrence(agg: Aggregation, lat: number, lng: number, catego
   for (const [res, cells] of agg) {
     const h = latLngToCell(lat, lng, res);
     let s = cells.get(h);
-    if (!s) cells.set(h, (s = { weight: 0, total: 0, byCategory: {} }));
+    if (!s) cells.set(h, (s = emptyStats()));
     s.weight += weight;
     s.total += 1;
     s.byCategory[category] = (s.byCategory[category] ?? 0) + 1;
+  }
+}
+
+/**
+ * BO sem coordenada mas com distrito conhecido: o peso é dividido igualmente entre os hexágonos do distrito
+ * (todos têm praticamente a mesma área), em vez de cair inteiro num ponto como o centroide.
+ */
+export function addDistributed(agg: Aggregation, districtCells: Map<number, string[]>, category: CrimeCategory): void {
+  const weight = CRIME_WEIGHTS[category];
+  for (const [res, cells] of agg) {
+    const list = districtCells.get(res) ?? [];
+    for (const h of list) {
+      let s = cells.get(h);
+      if (!s) cells.set(h, (s = emptyStats()));
+      s.weight += weight / list.length;
+      s.distributed[category] = (s.distributed[category] ?? 0) + 1 / list.length;
+    }
   }
 }
 

@@ -53,7 +53,11 @@ Opções: `--arquivo=caminho.xlsx`, `--periodo=2025` (só conta ocorrências des
 3. Soma os pesos por hexágono H3 nas resoluções 7, 8 e 9 e divide pela área do hexágono → **score = peso/km²**.
 4. **Nível 1..5:** hexágono sem ocorrência = 1; os demais pelos quintis do score na resolução 8. Os mesmos cortes
    (em peso/km²) valem para 7 e 9, para a cor de um lugar não mudar quando o zoom troca de resolução.
-5. A grade cobre todo o município (inclusive hexágonos sem BO), para o mapa não ter buracos.
+5. **Estupro sem coordenada** (a SSP não publica a localização de crimes sexuais): se o BO é da capital, em local
+   público (via pública, transporte, comércio… — residência não conta) e o BAIRRO casa com o nome de um distrito
+   (com abreviações como "Vl." → "Vila"), o peso 9 é dividido igualmente entre os hexágonos do distrito.
+   Não vai para o centroide, para não criar uma mancha falsa num único hexágono. Lista em `DISTRIBUIR_SEM_LOCALIZACAO`.
+6. A grade cobre todo o município (inclusive hexágonos sem BO), para o mapa não ter buracos.
 
 Hexágonos na borda do município cobrem área de fora (sem BOs contados), então tendem a ter nota menor.
 

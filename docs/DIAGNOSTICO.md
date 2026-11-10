@@ -131,3 +131,5 @@ funcionando no app.
   só contam ocorrências dentro do período (`--todas-as-datas` desliga). O aviso de duplicação foi recalibrado (só meses com
   ≥ 1% das linhas e divididos ≥ 25% entre abas). Sem coordenada na capital: 87.765 BOs, 2.925 estupros (64% com bairro
   igual a nome de distrito).
+- Pesos novos aprovados (culposo = 0: crime sem intenção, quase todo de trânsito). Estupro sem coordenada, na capital,
+  em local público e com bairro = distrito passa a ser distribuído igualmente pelos hexágonos do distrito.

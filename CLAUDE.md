@@ -56,7 +56,8 @@ de boletins de ocorrência da SSP-SP. Projeto pessoal; idioma do código e dos c
 Fases 0 e 1 concluídas. Projeto Supabase `grad` (ref `snuxiwwvlaryggezcezi`, sa-east-1); login anônimo e
 manual linking ligados. Sem extensão `h3`: hexágonos calculados com `h3-js`, resoluções 7/8/9 (zoom dinâmico).
 Fase 2 em andamento: distritos e subprefeituras gravados no Supabase (96/32, geometrias válidas, vínculo conferido
-espacialmente). Crimes: relatório com a planilha real ok (~380 mil BOs válidos em SP); falta aprovar os pesos novos
-(extorsão/sequestro, arma, tráfico, culposo) e rodar `--gravar` no computador do dono — ver `scripts/README.md`.
+espacialmente). Crimes: relatório com a planilha real ok (~380 mil BOs válidos em SP); pesos aprovados (inclui extorsão/sequestro 9,
+arma 3, tráfico 2, culposo 0). Estupro sem coordenada é distribuído pelos hexágonos do distrito (local público).
+Falta rodar `--gravar` no computador do dono — ver `scripts/README.md`.
 Ver `docs/DIAGNOSTICO.md` (bugs conhecidos), `docs/DECISAO_BACKEND.md` (por que Supabase) e
 `docs/PROMPT_CONTINUIDADE.md` (roadmap).
