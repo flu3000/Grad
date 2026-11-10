@@ -229,3 +229,14 @@ funcionando no app.
 - **Configurações:** saíram a intensidade "forte" (escondia o mapa) e o interruptor da legenda (ela já recolhe com um
   toque). Configurações antigas salvas no aparelho são convertidas automaticamente.
 - **Atenção:** versões do app anteriores a esta só conhecem 5 níveis; usar a versão nova com o banco atual.
+
+## Atualização — 10/11/2026 (10 níveis, cortes por resolução)
+
+- Com 8 níveis e cortes únicos (da res. 8), o nível 8 no hexágono pequeno (res. 9) ainda ia de ~50 a ~1.000 BOs: áreas
+  pequenas atingem densidades que as maiores nunca têm. Agora são **10 níveis** e os cortes são calculados **em cada
+  resolução** (percentis 15/30/45/60/72/82/90/95/98). Nível 10 na res. 9: 185 hexágonos, a partir de 148 BOs.
+- Consequência aceita: a cor de um lugar pode mudar um pouco ao trocar de zoom (cada zoom compara áreas do mesmo tamanho).
+- Faixas de BOs se sobrepõem entre níveis vizinhos porque a nota pondera a gravidade (poucos crimes graves podem pesar
+  mais que muitos furtos), e o nível mais alto sempre vai "até o máximo" (cauda longa).
+- Rótulos: Poucos registros, Muito baixo, Baixo, Médio-baixo, Médio, Médio-alto, Alto, Muito alto, Grave, Crítico.
+- Perfil: "Cor dos hexágonos" com as opções "Suave" e "Normal".
