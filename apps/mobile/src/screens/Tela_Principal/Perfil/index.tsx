@@ -1,11 +1,16 @@
 import React, { useEffect, useState } from 'react';
 import { ActivityIndicator, Alert, Platform } from 'react-native';
 import * as AppleAuthentication from 'expo-apple-authentication';
+import Constants from 'expo-constants';
 import { useTheme } from 'styled-components/native';
+import Linha_Interruptor from '../../../components/Comum/Linha_Interruptor';
+import Opcao_Segmentada from '../../../components/Comum/Opcao_Segmentada';
 import Tela_Rolavel from '../../../components/Comum/Tela_Rolavel';
 import * as C from '../../../components/Comum/Tela_Rolavel/styles';
 import { useAuth } from '../../../contexts/Auth_Context';
+import { useConfig, type PreferenciaTema } from '../../../contexts/Config_Context';
 import { appleDisponivel, emExpoGo, entrarCom, googleDisponivel, type Provedor } from '../../../lib/loginSocial';
+import type { Intensidade } from '../../../theme/niveis';
 import * as S from './styles';
 
 const NOME_PROVEDOR: Record<string, string> = { google: 'Google', apple: 'Apple' };
@@ -14,6 +19,7 @@ const NOME_PROVEDOR: Record<string, string> = { google: 'Google', apple: 'Apple'
 const Perfil = () => {
   const theme = useTheme();
   const { session, carregando, erro, entrarComoConvidado, sair } = useAuth();
+  const { config, atualizar, restaurarPadrao } = useConfig();
   const [apple, setApple] = useState(false);
   const [entrando, setEntrando] = useState<Provedor | null>(null);
 
@@ -115,13 +121,58 @@ const Perfil = () => {
       )}
 
       <C.Secao style={{ marginTop: 16 }}>
+        <C.Subtitulo>Configurações</C.Subtitulo>
+        <Opcao_Segmentada<PreferenciaTema>
+          rotulo="Tema"
+          valor={config.tema}
+          onMudar={(tema) => atualizar({ tema })}
+          opcoes={[
+            { valor: 'sistema', texto: 'Sistema' },
+            { valor: 'claro', texto: 'Claro' },
+            { valor: 'escuro', texto: 'Escuro' },
+          ]}
+        />
+        <Opcao_Segmentada<Intensidade>
+          rotulo="Cores dos hexágonos"
+          valor={config.intensidade}
+          onMudar={(intensidade) => atualizar({ intensidade })}
+          opcoes={[
+            { valor: 'suave', texto: 'Suaves' },
+            { valor: 'normal', texto: 'Normais' },
+            { valor: 'forte', texto: 'Fortes' },
+          ]}
+        />
+        <Linha_Interruptor
+          rotulo="Polícia, GCM e bombeiros no mapa"
+          descricao="Aparecem ao aproximar o mapa de um bairro."
+          valor={config.mostrarUnidades}
+          onMudar={(mostrarUnidades) => atualizar({ mostrarUnidades })}
+        />
+        <Linha_Interruptor
+          rotulo="Mostrar legenda no mapa"
+          valor={config.mostrarLegenda}
+          onMudar={(mostrarLegenda) => atualizar({ mostrarLegenda })}
+        />
+        <Linha_Interruptor
+          rotulo="Centralizar em mim ao abrir"
+          descricao="Ao abrir o app, o mapa vai para a sua localização."
+          valor={config.centralizarAoAbrir}
+          onMudar={(centralizarAoAbrir) => atualizar({ centralizarAoAbrir })}
+        />
+        <C.BotaoSecundario onPress={restaurarPadrao}>
+          <C.BotaoSecundarioTexto>Restaurar padrão</C.BotaoSecundarioTexto>
+        </C.BotaoSecundario>
+      </C.Secao>
+
+      <C.Secao>
         <C.Subtitulo>Sobre os dados</C.Subtitulo>
         <C.TextoSecundario>
           O mapa usa os boletins de ocorrência de 2025 publicados pela Secretaria da Segurança Pública de São Paulo.
           Cada tipo de crime tem um peso (crimes contra a vida pesam mais que furtos) e a cidade é dividida em
           hexágonos. O nível compara cada hexágono com o resto da cidade: nível 1 indica poucos registros, não
-          garantia de segurança.
+          garantia de segurança. As unidades de polícia, GCM e bombeiros vêm da base GeoSampa da Prefeitura.
         </C.TextoSecundario>
+        <C.TextoSecundario style={{ marginTop: 8 }}>{`Versão ${Constants.expoConfig?.version ?? '–'}`}</C.TextoSecundario>
       </C.Secao>
     </Tela_Rolavel>
   );

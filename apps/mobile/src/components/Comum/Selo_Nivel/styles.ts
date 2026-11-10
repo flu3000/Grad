@@ -15,10 +15,10 @@ export const Selo = styled.View<{ $cor: string; $compacto: boolean }>`
   background-color: ${({ $cor }) => $cor};
 `;
 
-export const SeloTexto = styled.Text<{ $compacto: boolean }>`
+export const SeloTexto = styled.Text<{ $compacto: boolean; $corTexto: string }>`
   font-size: ${({ $compacto }) => ($compacto ? 18 : 22)}px;
   font-weight: 800;
-  color: ${({ theme }) => theme.colors.background};
+  color: ${({ $corTexto }) => $corTexto};
 `;
 
 export const Coluna = styled.View`
