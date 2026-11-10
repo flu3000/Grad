@@ -108,3 +108,18 @@ funcionando no app.
   **Reavaliar com os dados reais:** na resolução 9, poucos BOs por hexágono podem deixar o mapa "pipocado".
 - Normalização por população: não usada na cor do mapa (ver justificativa no histórico da sessão e em
   `scripts/README.md`); candidata a informação complementar por distrito na aba Área.
+
+## Atualização — 10/11/2026 (Fase 2, parte 2: dados reais)
+
+- Distritos e subprefeituras gravados pelo dono. Dois bugs encontrados e corrigidos:
+  - **Vínculo distrito → subprefeitura errado em 95 de 96 distritos.** O campo `cd_identificador_subprefeitura` do
+    arquivo de distritos é o *código* da subprefeitura, não o identificador. O `importGeo.ts` legado (Mongo) tinha o
+    mesmo erro. Corrigido no script novo e no banco; conferido espacialmente (96/96).
+  - **Geometrias inválidas** (autointerseção) no distrito Lajeado e na subprefeitura Guaianases, vindas da GeoSampa.
+    Corrigidas com gatilho `st_makevalid` (migration `corrige_geometrias_invalidas`).
+- Relatório de crimes com a planilha real: 1.161.132 linhas, 318 mil sem localização, 463 mil fora do município
+  (a planilha cobre o estado), ~380 mil válidas. A primeira aba não tem dados. Estupro aparece zerado: a SSP não
+  publica localização de crimes sexuais nessa base.
+- O aviso de meses repetidos entre abas era esperado (data da ocorrência ≠ data do registro). Agora os duplicados são
+  removidos pelo número do BO + ano + delegacia.
+- Novas categorias propostas: extorsão mediante sequestro (9), porte/posse de arma (3), tráfico (2), culposos (0).

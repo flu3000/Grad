@@ -33,6 +33,8 @@ de boletins de ocorrência da SSP-SP. Projeto pessoal; idioma do código e dos c
 - Pastas/arquivos de tela e componente em `Pascal_Snake_Case` (`Tela_Principal/Main/index.tsx` + `styles.ts`).
 - Estilos sempre em `styles.ts` com styled-components e cores do tema (`theme.colors.*`), nunca hex solto.
 - Rotas da API: `routes/*.routes.ts` → `controllers/*Controller.ts` → `models/*.ts`.
+- GeoSampa: em `distritos.geojson`, `cd_identificador_subprefeitura` é o **código** da subprefeitura (`cd_subprefeitura`),
+  não o identificador dela.
 - Geometrias no banco sempre em WGS84 `[lng, lat]`. Os GeoJSON da GeoSampa vêm em EPSG:31983 e são
   convertidos por `utils/convertCoordinates.ts` no script `scripts/importGeo.ts`.
 - Mensagens de commit em português, curtas e descritivas.
@@ -53,7 +55,8 @@ de boletins de ocorrência da SSP-SP. Projeto pessoal; idioma do código e dos c
 ## Estado atual e próximos passos
 Fases 0 e 1 concluídas. Projeto Supabase `grad` (ref `snuxiwwvlaryggezcezi`, sa-east-1); login anônimo e
 manual linking ligados. Sem extensão `h3`: hexágonos calculados com `h3-js`, resoluções 7/8/9 (zoom dinâmico).
-Fase 2 em andamento: `scripts/importGeo.ts` e `scripts/importCrimes.ts` prontos e testados com dados sintéticos;
-falta o dono rodá-los no computador dele (a planilha da SSP-SP não está no ambiente da nuvem) — ver `scripts/README.md`.
+Fase 2 em andamento: distritos e subprefeituras gravados no Supabase (96/32, geometrias válidas, vínculo conferido
+espacialmente). Crimes: relatório com a planilha real ok (~380 mil BOs válidos em SP); falta aprovar os pesos novos
+(extorsão/sequestro, arma, tráfico, culposo) e rodar `--gravar` no computador do dono — ver `scripts/README.md`.
 Ver `docs/DIAGNOSTICO.md` (bugs conhecidos), `docs/DECISAO_BACKEND.md` (por que Supabase) e
 `docs/PROMPT_CONTINUIDADE.md` (roadmap).

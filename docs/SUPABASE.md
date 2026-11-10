@@ -19,6 +19,7 @@ supabase/
 | `20261110005609_esquema_inicial` | PostGIS no schema `extensions`; tabelas `subprefectures`, `districts`, `hex_cells` (SRID 4326, índices GIST); RLS com leitura pública e sem escrita pelo cliente |
 | `20261110005703_funcoes_mapa` | Funções `hexagons_in_view` e `locate_point` (security invoker, `search_path` vazio) |
 | `20261110012322_resolucao_dinamica` | As duas funções passam a receber a resolução H3 (`res`, padrão 8) |
+| `20261110015508_corrige_geometrias_invalidas` | Gatilho que aplica `st_makevalid` em distritos/subprefeituras inválidos ao gravar (Lajeado e Guaianases vêm com autointerseção da GeoSampa) |
 
 A extensão `h3` **não** está disponível no projeto (só PostGIS 3.3.7). Os índices H3 e os polígonos dos
 hexágonos são calculados no script de importação com `h3-js` e gravados em `hex_cells`.
