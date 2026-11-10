@@ -7,7 +7,7 @@ Grad: app mobile que mostra um mapa de São Paulo colorido por nível de perigo,
 de boletins de ocorrência da SSP-SP. Projeto pessoal; idioma do código e dos commits: **português**.
 
 ## Monorepo
-- `apps/mobile` — Expo SDK 54, React Native 0.81, React 19.1, TypeScript estrito, styled-components (tema em
+- `apps/mobile` — Expo SDK 58, React Native 0.88, React 19.3, TypeScript estrito, styled-components (tema em
   `src/theme/colors.js`, níveis em `src/theme/niveis.ts`), react-native-maps, expo-location, React Navigation (abas),
   `@supabase/supabase-js`. Entrada: `index.js` → `App.tsx` → `src/navigation/Abas.tsx` (Mapa, Área, Perfil).
   Supabase em `src/lib/supabase.ts` (sessão criptografada: chave no SecureStore, dados no AsyncStorage) e chamadas do
@@ -33,6 +33,10 @@ de boletins de ocorrência da SSP-SP. Projeto pessoal; idioma do código e dos c
 - Checagem de tipos (rodar antes de todo commit): `npm run typecheck`
 - Não há testes automatizados ainda.
 - `npm audit`: não usar `--force` no app (troca o SDK do Expo); ver a seção de dependências em `docs/DIAGNOSTICO.md`.
+- O SDK precisa ser o mesmo do Expo Go instalado no celular (a loja só oferece o mais recente). Neste ambiente da nuvem,
+  rodar o CLI do Expo com `EXPO_OFFLINE=1` (a rede bloqueia a API do Expo).
+- Só usar módulos nativos incluídos no Expo Go (`node_modules/expo/bundledNativeModules.json`) enquanto não houver
+  development build; ex.: `expo-crypto` em vez de `react-native-get-random-values`.
 
 ## Convenções
 - Pastas/arquivos de tela e componente em `Pascal_Snake_Case` (`Tela_Principal/Main/index.tsx` + `styles.ts`).

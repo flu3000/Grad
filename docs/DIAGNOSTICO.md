@@ -175,13 +175,12 @@ funcionando no app.
 
 ## Dependências e `npm audit` — 10/11/2026
 
-- `apps/mobile`: 33 → 13 vulnerabilidades (0 críticas, 1 alta) com `npm audit fix` e `overrides` de `ws@^7` → 7.5.13
-  e `postcss` → 8.5.x (mesma série, sem quebra). Todas as restantes estão em **ferramentas de desenvolvimento** (CLI do
-  Expo, Metro, config plugins), não no código que vai para o celular:
-  - `image-size` (alta): DoS ao ler imagem maliciosa; só processa os assets do próprio projeto. Correção exige a v2
-    (quebra o Metro).
-  - `glob`, `minimatch`, `deepmerge` e os pacotes `@expo/*` que dependem deles: corrigidos só no Expo SDK 58.
-    **Não** usar `npm audit fix --force`: ele instala o SDK 58 e quebra a compatibilidade com o SDK 54 / Expo Go.
-  - Reavaliar ao atualizar o SDK do Expo.
+- **App atualizado do Expo SDK 54 para o 58** (React Native 0.88, React 19.3, react-native-maps 1.29), porque o Expo Go
+  da loja só abre projetos do SDK mais recente. Dependências nativas alinhadas com `expo install --fix`.
+  `react-native-get-random-values` (fora do Expo Go 58) trocado por `expo-crypto` no armazenamento da sessão.
+  `newArchEnabled` e `android.edgeToEdgeEnabled` saíram do `app.json` (obrigatórios desde o SDK 55).
+- `apps/mobile`: 5 vulnerabilidades moderadas, todas no CLI do Expo (`glob` 13 e `minimatch` 10 em `@expo/cli` e
+  `@expo/fingerprint`), que roda só no computador de desenvolvimento. O npm sugere "corrigir" voltando para o Expo 53;
+  **não** usar `npm audit fix --force`. Os `overrides` de `ws`/`postcss` do SDK 54 não são mais necessários.
 - `scripts`: 0 vulnerabilidades (`overrides` de `uuid` → 11.x; o exceljs só usa `v4`, que não mudou).
 - Os avisos `npm warn deprecated` (inflight, glob, rimraf, fstream…) vêm de dependências indiretas e não afetam o uso.

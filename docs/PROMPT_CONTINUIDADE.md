@@ -32,7 +32,7 @@ sem servidor próprio, projeto na região sa-east-1 (São Paulo), plano gratuito
   linkIdentity({ provider, token }). Login social exige development build (não funciona no Expo Go).
 
 ## Estado atual
-- apps/mobile (Expo SDK 54, RN 0.81, React 19.1, TS, styled-components, react-native-maps, expo-location):
+- apps/mobile (Expo SDK 58, RN 0.88, React 19.3, TS, styled-components, react-native-maps, expo-location):
   só a tela do mapa com a localização do usuário e uma bottom bar vazia; telas de login vazias; camada
   api.ts/TokenStorage.ts/UserService.ts escrita para web/Vite e quebrada no React Native.
 - Supabase (projeto grad, ref snuxiwwvlaryggezcezi): esquema, RLS e funções hexagons_in_view/locate_point

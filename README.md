@@ -15,7 +15,7 @@ com base nos boletins de ocorrência (BOs) públicos da SSP-SP.
 ```
 Grad/
 ├── apps/
-│   └── mobile/   App React Native + Expo SDK 54 (TypeScript, styled-components, react-native-maps)
+│   └── mobile/   App React Native + Expo SDK 58 (TypeScript, styled-components, react-native-maps)
 ├── supabase/     Configuração do CLI e migrations SQL (esquema, RLS, funções do mapa)
 ├── scripts/      Importação local de distritos e BOs para o Supabase (ver scripts/README.md)
 ├── data/         GeoJSON da GeoSampa (e do Rio, ainda sem uso); planilha da SSP-SP fica fora do Git
