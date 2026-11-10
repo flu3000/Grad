@@ -35,14 +35,13 @@ sem servidor próprio, projeto na região sa-east-1 (São Paulo), plano gratuito
 - apps/mobile (Expo SDK 54, RN 0.81, React 19.1, TS, styled-components, react-native-maps, expo-location):
   só a tela do mapa com a localização do usuário e uma bottom bar vazia; telas de login vazias; camada
   api.ts/TokenStorage.ts/UserService.ts escrita para web/Vite e quebrada no React Native.
-- apps/api (Express 5 + Mongoose): auth próprio, importação de distritos (GeoSampa, EPSG:31983 → WGS84 em
-  utils/convertCoordinates.ts) e rotas /neighborhoods e /geo/locate. Será substituído pelo Supabase; reaproveite
-  a lógica de conversão de coordenadas e de correção de geometria nos novos scripts.
-- Dados: apps/api/data/geosampa (96 distritos, 32 subprefeituras), apps/api/data/rio (não usado),
-  apps/api/data/SSP-SP/SPDadosCriminais_2025_Reduzida.xlsx (FORA do Git; abas JAN_A_JUN_2025 e
-  JUL_A_DEZ_2025; colunas LATITUDE, LONGITUDE, RUBRICA, NATUREZA_APURADA, DATA_OCORRENCIA_BO,
-  HORA_OCORRENCIA_BO, DESCR_TIPOLOCAL, BAIRRO...; lat/lng = 0 é localização sigilosa e deve ser descartado).
-  Se a planilha não estiver disponível no ambiente, me avise e siga com o que não depende dela.
+- Supabase (projeto grad, ref snuxiwwvlaryggezcezi): esquema, RLS e funções hexagons_in_view/locate_point
+  (com resolução 7/8/9) em supabase/migrations; distritos, subprefeituras e 17.636 hexágonos de 2025 gravados.
+  Login anônimo e manual linking ligados. Ver docs/SUPABASE.md.
+- scripts/ (importGeo.ts, importCrimes.ts): ingestão local com a chave secreta em scripts/.env; ver scripts/README.md.
+- Dados: data/geosampa (96 distritos, 32 subprefeituras), data/rio (não usado), data/SSP-SP/*.xlsx (FORA do Git;
+  só existe no computador do dono). Ver data/README.md.
+- A API Express + MongoDB (apps/api) foi removida na Fase 2.3.
 
 ## Roadmap (na ordem; commits pequenos em português)
 
@@ -64,9 +63,9 @@ Fase 1 — Supabase: projeto, esquema e auth (concluída em 10/11/2026; falta li
    credenciais no Google Cloud e na Apple — me guie quando chegar a hora).
 5. Rode os advisors de segurança/performance do Supabase e corrija o que aparecer.
 
-Fase 2 — Ingestão de dados (itens 1 e 2 concluídos em 10/11/2026: dados no Supabase; falta o item 3) (scripts locais, TypeScript, rodados com a chave secreta em .env não versionado)
+Fase 2 — Ingestão de dados (concluída em 10/11/2026) (scripts locais, TypeScript, rodados com a chave secreta em .env não versionado)
 1. scripts/importGeo.ts: distritos e subprefeituras de SP para o Supabase (reaproveitar a conversão
-   EPSG:31983 → WGS84 do apps/api).
+   EPSG:31983 → WGS84 da antiga API).
 2. scripts/importCrimes.ts: lê a planilha por streaming (ou converte antes para CSV), descarta lat/lng
    inválidos e fora do município, aplica pesos de src/config/crimeWeights.ts (proponha os pesos e me mostre
    antes de fixar), agrega por hexágono H3 (compare resolução 8 ≈ 2 mil hexágonos e 9 ≈ 14 mil para SP e
@@ -101,5 +100,5 @@ Fase 4 — Qualidade e entrega
 - Use npx expo install para dependências do app.
 - Ao final de cada fase, atualize CLAUDE.md, docs/DIAGNOSTICO.md e este roadmap com o novo estado.
 
-Comece pela Fase 0.
+Comece pela Fase 3.
 ```

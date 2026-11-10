@@ -35,7 +35,7 @@ funcionando no app.
 4. **Rotas de vínculo de conta divergentes.** O app chama `/auth/link-google` e `/auth/link-apple`
    (`UserService.ts:47,57`); a API expõe `/auth/link/google` e `/auth/link/apple` (`auth.routes.ts:29-30`) → 404.
 
-## API (`apps/api`)
+## API (`apps/api`) — removida na Fase 2.3 (10/11/2026); seção mantida como histórico
 
 - **Import do dotenv fora de ordem** (`src/server.ts:1-2`): `app` é importado antes de `dotenv/config`, então
   `AuthController` cria o cliente Google com `GOOGLE_CLIENT_ID` vazio quando a API é iniciada com `npm start` + `.env`.
@@ -148,3 +148,11 @@ funcionando no app.
 - Advisors: segurança sem avisos; performance só `unused_index` no índice da FK `districts.subprefecture_id` (mantido).
 - **Para avaliar na Fase 3:** o nível 5 junta scores de ~900 a ~10.000 peso/km² (Sé ≈ 6.400, Cidade Tiradentes ≈ 970).
   Se o mapa ficar pouco informativo no centro, dá para usar o `score` para variar a intensidade dentro do nível 5.
+
+## Atualização — 10/11/2026 (Fase 2.3)
+
+- `apps/api` (Express, Mongoose, rotas, JWT) removido; continua no histórico do Git.
+- Dados movidos para `data/` (`geosampa/`, `rio/` e `README.md`); `grad.neighborhoods.geojson` (export do MongoDB) apagado.
+- `package.json` da raiz sem os atalhos `api:*`; `install:all` e `typecheck` cobrem `apps/mobile` e `scripts`.
+- **Pendente na Fase 3:** `apps/mobile/.env.example` ainda tem `VITE_API_URL` apontando para o Railway; será trocado
+  por `EXPO_PUBLIC_SUPABASE_URL` e `EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY`.

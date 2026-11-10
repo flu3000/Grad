@@ -32,8 +32,8 @@ Consequência de projeto: **guardar no banco só o agregado por hexágono** (alg
 - **Neon/Postgres puro + API própria:** mais trabalho para o mesmo resultado; não traz Auth pronto.
 
 ## O que muda no código
-- `apps/api` (Express/Mongoose) será substituído por `supabase/` (migrations SQL, funções, seed) e
-  `scripts/` (importação de distritos e crimes, rodados localmente com a chave secreta).
+- `apps/api` (Express/Mongoose) foi substituído por `supabase/` (migrations SQL, funções) e
+  `scripts/` (importação de distritos e crimes, rodados localmente com a chave secreta) e removido na Fase 2.3.
 - `apps/mobile` passa a usar `@supabase/supabase-js`; somem `api.ts`, `TokenStorage.ts` e `UserService.ts`.
 - Login Google/Apple nativo exige **development build** (EAS/`npx expo run:android`); no Expo Go só o login
   anônimo funciona.
