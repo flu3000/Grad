@@ -17,6 +17,9 @@
     "data:limpar": "npm --prefix scripts run limpar --",
     "data:processar": "npm --prefix scripts run processar --",
     "data:consolidar": "npm --prefix scripts run consolidar --",
-    "data:comparar-banco": "npm --prefix scripts run comparar-banco --"
+    "data:comparar-banco": "npm --prefix scripts run comparar-banco --",
+    "data:indice-cnefe": "npm --prefix scripts run indice-cnefe --",
+    "data:geocodificar": "npm --prefix scripts run geocodificar --",
+    "data:comparar-geocodificacao": "npm --prefix scripts run comparar-geocodificacao --"
   }
 }

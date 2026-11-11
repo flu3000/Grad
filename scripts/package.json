@@ -13,7 +13,10 @@
     "limpar": "tsx --env-file-if-exists=.env limpar.ts",
     "processar": "tsx --env-file-if-exists=.env processar.ts",
     "consolidar": "tsx --env-file-if-exists=.env consolidar.ts",
-    "comparar-banco": "tsx --env-file-if-exists=.env compararBanco.ts"
+    "comparar-banco": "tsx --env-file-if-exists=.env compararBanco.ts",
+    "indice-cnefe": "tsx --env-file-if-exists=.env indiceCnefe.ts",
+    "geocodificar": "tsx --env-file-if-exists=.env geocodificar.ts",
+    "comparar-geocodificacao": "tsx --env-file-if-exists=.env compararGeocodificacao.ts"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.119.0",
