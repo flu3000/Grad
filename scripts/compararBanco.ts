@@ -22,13 +22,13 @@ interface Passo {
   escala: Escala;
 }
 
-const base = { anos: REGRAS_PADRAO.anos };
+const base = { anos: REGRAS_PADRAO.anos, geocodificacao: null };
 const PASSOS: Passo[] = [
   { nome: 'v0_regras_antigas', motivo: 'arquivo novo de 2025 com as regras antigas (todas as linhas, escala só de 2025)', regras: { ...base, deduplicar: 'nenhuma', tema506: false, pontosPadrao: false }, escala: 'por_ano' },
   { nome: 'v1_deduplicacao', motivo: 'deduplicação (mesmo BO e mesma categoria contam uma vez)', regras: { ...base, deduplicar: 'bo_categoria', tema506: false, pontosPadrao: false }, escala: 'por_ano' },
   { nome: 'v2_categoria_mais_grave', motivo: 'BO conta uma vez, na categoria mais grave', regras: { ...base, deduplicar: 'bo', tema506: false, pontosPadrao: false }, escala: 'por_ano' },
   { nome: 'v3_tema_506', motivo: 'Tema 506 do STF → não criminal', regras: { ...base, deduplicar: 'bo', tema506: true, pontosPadrao: false }, escala: 'por_ano' },
-  { nome: 'v4_ponto_de_perus', motivo: 'ponto padrão de Perus → sem localização', regras: REGRAS_PADRAO, escala: 'por_ano' },
+  { nome: 'v4_ponto_de_perus', motivo: 'pontos padrão confirmados (Perus e Liberdade) → sem localização', regras: REGRAS_PADRAO, escala: 'por_ano' },
   { nome: 'v5_escala_fixa', motivo: 'escala fixa (cortes de 2023–2025 juntos) = linha de base', regras: REGRAS_PADRAO, escala: 'fixa' },
 ];
 

@@ -25,7 +25,9 @@ import { outDir } from '../lib/paths';
 import { levelBreaks, levelFor, QUANTIS_DOS_CORTES, RESOLUTIONS, TOTAL_NIVEIS } from '../lib/scoring';
 import { lerManifesto, pastaLimpo } from './extracao';
 import {
+  geocodificadorDoCache,
   hexagonosDosDistritos,
+  novaGeo,
   processarLinhas,
   type CidadeAno,
   type Global,
@@ -41,6 +43,11 @@ export const COMPLETUDE_MINIMA = 0.95;
 export const JANELA_ATRASO = 9;
 
 export type Escala = 'fixa' | 'por_ano';
+/**
+ * Anualização do ano parcial (meses 1..L): 'linear' = × 12/L; 'sazonal' = ÷ fração do peso do ano que cai nos
+ * meses 1..L, na média dos anos completos (a cidade inteira, por peso).
+ */
+export type Anualizacao = 'linear' | 'sazonal';
 
 // -------------------------------------------------------------------------------------------- somas
 
@@ -60,6 +67,15 @@ export function somarCidade(a: CidadeAno, b: CidadeAno) {
   somarObj(a.horario, b.horario);
   b.pontosPorPeriodo.forEach((n, i) => (a.pontosPorPeriodo[i] += n));
   for (const [m, lags] of Object.entries(b.atraso)) somarObj((a.atraso[m] ??= {}), lags);
+  somarProfundo((a.geo ??= novaGeo()) as unknown as Record<string, unknown>, (b.geo ?? novaGeo()) as unknown as Record<string, unknown>);
+}
+
+/** a += b em objetos de contagem aninhados. */
+function somarProfundo(a: Record<string, unknown>, b: Record<string, unknown>) {
+  for (const [k, v] of Object.entries(b)) {
+    if (typeof v === 'number') a[k] = ((a[k] as number) ?? 0) + v;
+    else if (v && typeof v === 'object') somarProfundo((a[k] ??= {}) as Record<string, unknown>, v as Record<string, unknown>);
+  }
 }
 
 export function somarParciais(parciais: Pick<Parcial, 'agregado' | 'cidade' | 'global'>[]) {
@@ -213,10 +229,11 @@ export interface ResultadoConsolidacao {
 export async function consolidar(
   proc: ResultadoProcessamento,
   regras: Regras,
-  opcoes: { nome: string; escala?: Escala; conferirSequencial?: number; gravarArquivos?: boolean } = { nome: 'linha_de_base' },
+  opcoes: { nome: string; escala?: Escala; anualizacao?: Anualizacao; conferirSequencial?: number; gravarArquivos?: boolean } = { nome: 'linha_de_base' },
 ): Promise<ResultadoConsolidacao> {
   const inicio = Date.now();
   const escala = opcoes.escala ?? 'fixa';
+  const anualizacao = opcoes.anualizacao ?? 'sazonal';
   const parciais: Parcial[] = proc.parciais.map((f) => JSON.parse(fs.readFileSync(f, 'utf-8')));
   const { agregado, cidade, global } = somarParciais(parciais);
   const curva = curvaDeAtraso(cidade);
@@ -240,16 +257,43 @@ export async function consolidar(
     fator[ano] = { periodo: p ? t / p : 1, hora: h ? t / h : 1, pesoTotal: t, pesoComPeriodo: p, pesoComHora: h };
   }
 
+  // Anualização do ano parcial: fração do peso anual que cai nos meses 1..L (média dos anos completos).
+  const completos = anos.filter((a) => cob.get(a)!.complete);
+  const pesoPorMes: Record<number, number[]> = {};
+  for (const [k, c] of agregado) {
+    const { res, ano } = lerChave(k);
+    if (res !== 8) continue;
+    const m = (pesoPorMes[ano] ??= Array(12).fill(0));
+    c.weightByMonth.forEach((w, i) => (m[i] += w));
+  }
+  const fracaoAteMes = (L: number) => {
+    const fr = completos.map((a) => somaDosMeses(pesoPorMes[a], L) / pesoPorMes[a].reduce((x, y) => x + y, 0));
+    return { media: fr.reduce((x, y) => x + y, 0) / Math.max(1, fr.length), porAno: Object.fromEntries(completos.map((a, i) => [a, r4(fr[i])])) };
+  };
+  const fatorDoAno = new Map<number, number>();
+  const anualizacaoPorAno: Record<number, { meses: number; fatorLinear: number; fracaoMedia?: number; fracaoPorAno?: Record<string, number>; fator: number }> = {};
+  for (const ano of anos) {
+    const L = cob.get(ano)!.months_covered || 12;
+    if (L === 12) {
+      fatorDoAno.set(ano, 1);
+      anualizacaoPorAno[ano] = { meses: 12, fatorLinear: 1, fator: 1 };
+      continue;
+    }
+    const fr = fracaoAteMes(L);
+    const f = anualizacao === 'sazonal' && completos.length ? 1 / fr.media : fatorAnual(L);
+    fatorDoAno.set(ano, f);
+    anualizacaoPorAno[ano] = { meses: L, fatorLinear: r4(fatorAnual(L)), fracaoMedia: r4(fr.media), fracaoPorAno: fr.porAno, fator: r4(f) };
+  }
+
   // Densidade anualizada do dia inteiro (só os meses completos do ano parcial).
   const area = new Map<string, number>();
   const areaDe = (h: string) => area.get(h) ?? (area.set(h, cellArea(h, 'km2')), area.get(h)!);
   const densidade = (h: string, c: Celula, ano: number) => {
     const L = cob.get(ano)!.months_covered || 12;
-    return (somaDosMeses(c.weightByMonth, L) * fatorAnual(L)) / areaDe(h);
+    return (somaDosMeses(c.weightByMonth, L) * fatorDoAno.get(ano)!) / areaDe(h);
   };
 
   // Cortes: escala fixa = hexágono × ano dos anos completos juntos; por_ano = só o próprio ano (comparação).
-  const completos = anos.filter((a) => cob.get(a)!.complete);
   const cortesDe = (res: number, filtro: (ano: number) => boolean) =>
     levelBreaks(
       [...agregado]
@@ -279,7 +323,7 @@ export async function consolidar(
     const a = areaDe(h3);
     const d = densidade(h3, c, ano);
     // O ano parcial usa só os meses completos: escala os períodos/horas pela fração do peso nesses meses.
-    const escalaHex = c.weight > 0 ? (somaDosMeses(c.weightByMonth, L) / c.weight) * fatorAnual(L) : 0;
+    const escalaHex = c.weight > 0 ? (somaDosMeses(c.weightByMonth, L) / c.weight) * fatorDoAno.get(ano)! : 0;
     const br = cortes(res, ano);
     const level = levelFor(d, br);
     const dp = densidadesPorPeriodo(c.weightByPeriod, a, fator[ano].periodo, escalaHex);
@@ -303,6 +347,7 @@ export async function consolidar(
         sem_periodo: c.semPeriodo,
         sem_hora: c.semHora,
         geocodificado: c.geocodificado,
+        trocado: c.trocado ?? 0,
         por_periodo: Object.fromEntries(PERIODOS.map((p, i) => [p, c.byPeriod[i]])),
       },
       weight_by_period: c.weightByPeriod.map(r3),
@@ -343,6 +388,23 @@ export async function consolidar(
       c.linhas === c.pontos + c.distribuidos + Object.values(c.semLocalizacao).reduce((x, y) => x + y, 0),
       `${c.linhas} = ${c.pontos} + ${c.distribuidos} + ${JSON.stringify(c.semLocalizacao)}`,
     );
+    // Geocodificação: BOs com ponto = com coordenada da SSP + preenchidos + trocados − removidos
+    // (removidos = ponto padrão + fora do município + pontos suspeitos que foram trocados).
+    const g = c.geo;
+    const soma = (o: Record<string, number>) => Object.values(o).reduce((x, y) => x + y, 0);
+    const preench = soma(g.preenchidos);
+    const troc = soma(g.trocados);
+    const remov = g.removidos.pontoPadrao + g.removidos.pontoForaDoMunicipio + g.removidos.trocados;
+    add(
+      `${ano}: BOs com ponto = SSP + preenchidos + trocados − removidos`,
+      c.pontos === g.comCoordenadaSsp + preench + troc - remov,
+      `${c.pontos} = ${g.comCoordenadaSsp} + ${preench} + ${troc} − ${remov}`,
+    );
+    const geoHex = somaRes(ano, (x) => x.geocodificado);
+    const trocHex = somaRes(ano, (x) => x.trocado ?? 0);
+    add(`${ano}: hexágonos somam os preenchidos e os trocados`, geoHex.every((x) => x === preench) && trocHex.every((x) => x === troc), `${geoHex.join('/')} = ${preench}; ${trocHex.join('/')} = ${troc}`);
+    add(`${ano}: nenhum sigilo ou BO sensível geocodificado`, g.violacoes.sigiloOuSensivelGeocodificado === 0, `${g.violacoes.sigiloOuSensivelGeocodificado}`);
+    add(`${ano}: nenhum ponto final fora do município`, g.violacoes.pontoFinalForaDoMunicipio === 0, `${g.violacoes.pontoFinalForaDoMunicipio}`);
   }
   let erroPer = 0;
   let erroHora = 0;
@@ -408,12 +470,13 @@ export async function consolidar(
   if (opcoes.conferirSequencial) {
     const municipio = carregarMunicipio();
     const hexDoDistrito = hexagonosDosDistritos();
+    const geocodificar = geocodificadorDoCache(regras) ?? undefined;
     const amostra = parciais.filter((_, i) => i % Math.max(1, Math.floor(parciais.length / opcoes.conferirSequencial!)) === 0).slice(0, opcoes.conferirSequencial);
     let iguais = 0;
     for (const p of amostra) {
       const parte = proc.partes.find((x) => x.arquivo === p.parte)!;
       const bruto = zlib.gunzipSync(fs.readFileSync(path.join(pastaLimpo(), parte.arquivo))).toString('utf-8').split('\n').slice(1).filter(Boolean);
-      const r = processarLinhas(bruto.map(lerLinhaCsv), regras, { excluir: new Set(proc.excluir[p.parte] ?? []), distritoDe: municipio.distritoDe, hexDoDistrito });
+      const r = processarLinhas(bruto.map(lerLinhaCsv), regras, { excluir: new Set(proc.excluir[p.parte] ?? []), distritoDe: municipio.distritoDe, hexDoDistrito, geocodificar });
       const seq = JSON.stringify({ agregado: Object.fromEntries(r.agregado), cidade: r.cidade, global: r.global });
       if (seq === JSON.stringify({ agregado: p.agregado, cidade: p.cidade, global: p.global })) iguais++;
     }
@@ -428,7 +491,8 @@ export async function consolidar(
       rows_valid: c.pontos,
       rows_distributed: c.distribuidos,
       rows_no_location: Object.values(c.semLocalizacao).reduce((a, b) => a + b, 0),
-      rows_geocoded: linhas.filter((l) => l.resolution === 8 && l.year === ano).reduce((s, l) => s + Number(l.counts.geocodificado ?? 0), 0),
+      rows_geocoded: Object.values(c.geo.preenchidos).reduce((a, b) => a + b, 0),
+      rows_swapped: Object.values(c.geo.trocados).reduce((a, b) => a + b, 0),
       rows_no_hour: c.pontos - c.horario.hora,
       source_files: Object.values(manifesto.arquivos).map((a) => a.origem),
     };
@@ -444,6 +508,7 @@ export async function consolidar(
     curvaDeAtraso: curva,
     datasets,
     fatores: fator,
+    anualizacao: { modo: anualizacao, porAno: anualizacaoPorAno },
     cortes: escala === 'fixa' ? cortesFixos : Object.fromEntries(cortesPorAno),
     quantis: QUANTIS_DOS_CORTES,
     hexagonosPorNivel: niveis,

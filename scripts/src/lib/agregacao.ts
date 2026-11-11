@@ -28,7 +28,10 @@ export interface Celula {
   totalByMonth: number[];
   /** Categorias (contagem de BOs com ponto) dentro de cada período. */
   byPeriod: Partial<Record<CrimeCategory, number>>[];
+  /** BOs sem ponto usável da SSP que ganharam o do endereço */
   geocodificado: number;
+  /** BOs com ponto suspeito trocado pelo do endereço */
+  trocado: number;
 }
 
 export const novaCelula = (): Celula => ({
@@ -48,6 +51,7 @@ export const novaCelula = (): Celula => ({
   totalByMonth: Array(12).fill(0),
   byPeriod: [{}, {}, {}, {}],
   geocodificado: 0,
+  trocado: 0,
 });
 
 /** Chave "res|h3|ano". */
@@ -105,11 +109,12 @@ function celula(agg: Agregado, k: string): Celula {
 }
 
 /** BO com ponto: entra inteiro no hexágono de cada resolução. */
-export function somarPonto(agg: Agregado, lat: number, lng: number, o: Ocorrencia, geocodificado = false) {
+export function somarPonto(agg: Agregado, lat: number, lng: number, o: Ocorrencia, origem: 'ssp' | 'geocodificado' | 'trocado' = 'ssp') {
   for (const res of RESOLUTIONS) {
     const c = celula(agg, chave(res, latLngToCell(lat, lng, res), o.ano));
     somarNaCelula(c, o, 1, true);
-    if (geocodificado) c.geocodificado++;
+    if (origem === 'geocodificado') c.geocodificado++;
+    if (origem === 'trocado') c.trocado++;
   }
 }
 
@@ -144,6 +149,7 @@ export function somarCelula(a: Celula, b: Celula) {
   somarArray(a.totalByMonth, b.totalByMonth);
   b.byPeriod.forEach((o, i) => somarObj(a.byPeriod[i], o));
   a.geocodificado += b.geocodificado;
+  a.trocado += b.trocado ?? 0;
 }
 
 export function somar(destino: Agregado, origem: Agregado | Record<string, Celula>) {

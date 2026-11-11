@@ -211,3 +211,32 @@ test('curva de atraso e cobertura do ano parcial', () => {
   assert.equal(c.complete, false);
   assert.equal(cobertura(2025, { atraso } as never, curva).complete, true);
 });
+
+test('geocodificação: decisão por nível e origem do distrito; nunca sigilo nem lista sensível', async () => {
+  const { decidir, situacaoDoPonto, casasDecimais } = await import('../src/pipeline/geocodificacao');
+  const { GEOCODIFICACAO } = await import('../src/config/geocodificacao');
+  const distritoDe = () => 'SE';
+  const base = { id_bo: 'x', data_registro: null, data_ocorrencia: '2025-01-01', hora: null, periodo: null, tipo_local: null, subtipo_local: null, bairro: 'SE', logradouro: 'RUA X', numero: 10, lat: null, lng: null, sigilo: false, rubrica: 'Furto', conduta: null, natureza: 'FURTO - OUTROS', mes_estatistica: null, ano_estatistica: null, cod_ibge: 3550308, arquivo: 'a', aba: 'a', linha: 1 };
+  const geo = (nivel: string, dica: 'ponto' | 'bairro' | 'localidade' | null) => () => ({ ok: true, lat: -23.55, lng: -46.63, nivel, dica });
+  const sem = situacaoDoPonto(base, true, distritoDe);
+  assert.equal(decidir(base, 'furto_outros', sem, GEOCODIFICACAO, geo('exato', 'bairro'), distritoDe).origem, 'preenchido');
+  assert.equal(decidir(base, 'furto_outros', sem, GEOCODIFICACAO, geo('exato', null), distritoDe).origem, 'sem'); // sem distrito, não
+  assert.equal(decidir(base, 'furto_outros', sem, GEOCODIFICACAO, geo('interpolado', 'localidade'), distritoDe).origem, 'sem');
+  assert.equal(decidir(base, 'furto_outros', sem, GEOCODIFICACAO, geo('curto', 'bairro'), distritoDe).origem, 'sem');
+  assert.equal(decidir(base, 'furto_outros', sem, null, geo('exato', 'bairro'), distritoDe).origem, 'sem'); // linha de base
+  assert.equal(decidir({ ...base, sigilo: true }, 'furto_outros', sem, GEOCODIFICACAO, geo('exato', 'bairro'), distritoDe).origem, 'sem');
+  assert.equal(decidir(base, 'estupro', sem, GEOCODIFICACAO, geo('exato', 'bairro'), distritoDe).origem, 'sem');
+  assert.equal(decidir({ ...base, rubrica: 'Lesão corporal - violência doméstica' }, 'lesao_dolosa', sem, GEOCODIFICACAO, geo('exato', 'bairro'), distritoDe).origem, 'sem');
+  // ponto suspeito (3 casas) a mais de 300 m → troca; ponto confiável fica
+  const suspeito = { ...base, lat: -23.56, lng: -46.631 };
+  assert.equal(casasDecimais(-23.56), 2);
+  assert.equal(decidir(suspeito, 'furto_outros', situacaoDoPonto(suspeito, true, distritoDe), GEOCODIFICACAO, geo('exato', 'ponto'), distritoDe).origem, 'trocado');
+  const confiavel = { ...base, lat: -23.561234, lng: -46.631234 };
+  assert.equal(decidir(confiavel, 'furto_outros', situacaoDoPonto(confiavel, true, distritoDe), GEOCODIFICACAO, geo('exato', 'ponto'), distritoDe).origem, 'ssp');
+  // ponto padrão → perde a coordenada e pode ser preenchido
+  const padrao = { ...base, lat: -23.555771, lng: -46.639557 };
+  const sp = situacaoDoPonto(padrao, true, distritoDe);
+  assert.equal(sp.pontoPadrao, true);
+  assert.equal(decidir(padrao, 'furto_outros', sp, GEOCODIFICACAO, geo('exato', 'bairro'), distritoDe).origem, 'preenchido');
+  assert.equal(decidir(padrao, 'furto_outros', sp, GEOCODIFICACAO, () => ({ ok: false, falha: 'ambiguo' as const, dica: 'bairro' as const }), distritoDe).origem, 'sem');
+});

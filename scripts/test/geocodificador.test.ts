@@ -167,3 +167,8 @@ test('busca: o mesmo logradouro partido em duas instâncias fica com a que tem o
   assert.ok(Math.abs(r.lat! - -23.5) < 1e-9);
   assert.equal(g2.geocodificar({ logradouro: 'AV DAS NAÇÕES UNIDAS', numero: 500, bairro: null, distrito: 'SE' }).falha, 'ambiguo');
 });
+
+test('busca: o número escrito no logradouro vale mais que a coluna NUMERO', () => {
+  assert.equal(g.geocodificar({ logradouro: 'RUA GLICERIO, 102', numero: 1, bairro: null, distrito: 'SE' }).nivel, 'exato');
+  assert.equal(g.geocodificar({ logradouro: 'RUA GLICERIO', numero: 102, bairro: null, distrito: 'SE' }).nivel, 'exato');
+});

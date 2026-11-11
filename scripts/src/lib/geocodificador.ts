@@ -271,7 +271,9 @@ export class Geocodificador {
     if (!q.logradouro) return { ok: false, falha: 'sem_logradouro' };
     const lg = analisarLogradouro(q.logradouro);
     if (!lg.chave) return { ok: false, falha: 'sem_logradouro' };
-    const numero = q.numero ?? (lg.semNumero ? null : lg.numero);
+    // O número escrito no próprio logradouro ("RODOVIA DOS IMIGRANTES, 1500") vale mais que a coluna NUMERO, que às
+    // vezes vem cortada (1, 15).
+    const numero = lg.numero ?? (lg.semNumero ? null : q.numero);
     const { distrito, dica } = this.dicaDeDistrito(q);
     let ids = this.porChave.get(lg.chave);
     let aproximado = false;

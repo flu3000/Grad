@@ -12,7 +12,8 @@ import path from 'path';
 import zlib from 'zlib';
 import { polygonToCellsExperimental, POLYGON_TO_CELLS_FLAGS } from 'h3-js';
 import { CRIME_RULES, CRIME_WEIGHTS, DISTRIBUIR_SEM_LOCALIZACAO, maisGrave, normalizeText, type CrimeCategory } from '../config/crimeWeights';
-import { CHAVES_PONTOS_PADRAO, chavePonto } from '../config/pontosPadrao';
+import { GEOCODIFICACAO } from '../config/geocodificacao';
+import { naoGeocodificar } from '../config/naoGeocodificar';
 import { somarDistribuido, somarPonto, type Agregado, type Celula } from '../lib/agregacao';
 import { readGeoSampa } from '../lib/city';
 import { periodoDaHora, type Periodo, PERIODOS } from '../lib/horario';
@@ -23,7 +24,9 @@ import { avisarProgresso, ehTrabalhador, rodarEmPool, servirTarefas, workersPadr
 import { RESOLUTIONS } from '../lib/scoring';
 import { ehLocalPublico, normalizarBairro } from '../lib/semLocalizacao';
 import { IBGE_CAPITAL } from '../lib/valores';
+import type { Consulta, Resultado } from '../lib/geocodificador';
 import { lerManifesto, partesDoManifesto, pastaLimpo, type Parte } from './extracao';
+import { chaveConsulta, decidir, hashDosCandidatos, lerCandidatos, situacaoDoPonto, type RegrasGeocodificacao } from './geocodificacao';
 
 /** Regras do processamento. A linha de base usa REGRAS_PADRAO; as outras servem para medir o efeito de cada mudança. */
 export interface Regras {
@@ -32,9 +35,12 @@ export interface Regras {
   deduplicar: 'bo' | 'bo_categoria' | 'nenhuma';
   tema506: boolean;
   pontosPadrao: boolean;
+  /** null = só as coordenadas da SSP (linha de base); senão, preenche e troca pelo endereço (Etapa 2). */
+  geocodificacao: RegrasGeocodificacao | null;
 }
 
-export const REGRAS_PADRAO: Regras = { anos: [2023, 2024, 2025, 2026], deduplicar: 'bo', tema506: true, pontosPadrao: true };
+export const REGRAS_PADRAO: Regras = { anos: [2023, 2024, 2025, 2026], deduplicar: 'bo', tema506: true, pontosPadrao: true, geocodificacao: null };
+export const REGRAS_COM_GEOCODIFICACAO: Regras = { ...REGRAS_PADRAO, geocodificacao: GEOCODIFICACAO };
 
 /** Classificação com a opção de desligar a regra do Tema 506 (só para medir o efeito dela). */
 export function classificar(rubrica: string | null, natureza: string | null, regras: Pick<Regras, 'tema506'>): CrimeCategory {
@@ -62,7 +68,41 @@ export interface CidadeAno {
   pontosPorPeriodo: number[];
   /** Mês da ocorrência "AAAA-MM" → atraso em meses até o registro → BOs (todos os BOs da capital no ano). */
   atraso: Record<string, Record<string, number>>;
+  geo: EstatisticasGeo;
 }
+
+/** Contagens da geocodificação (todas as linhas do ano, depois da deduplicação). */
+export interface EstatisticasGeo {
+  /** linhas com lat/lng da SSP (qualquer uma) */
+  comCoordenadaSsp: number;
+  /** pontos da SSP arredondados (até 3 casas), dentro da capital e fora dos pontos padrão */
+  suspeitos: number;
+  /** linhas que consultaram o endereço */
+  consultas: number;
+  /** tinham logradouro e precisavam do endereço, mas são da lista sensível */
+  bloqueados: number;
+  preenchidos: Record<string, number>;
+  preenchidosPorCategoria: Partial<Record<CrimeCategory, number>>;
+  trocados: Record<string, number>;
+  removidos: { pontoPadrao: number; pontoForaDoMunicipio: number; trocados: number };
+  /** sem ponto no fim: motivo da falha do endereço (ou nível não aceito) */
+  falhas: Record<string, number>;
+  /** conferências que precisam dar zero */
+  violacoes: { sigiloOuSensivelGeocodificado: number; pontoFinalForaDoMunicipio: number };
+}
+
+export const novaGeo = (): EstatisticasGeo => ({
+  comCoordenadaSsp: 0,
+  suspeitos: 0,
+  consultas: 0,
+  bloqueados: 0,
+  preenchidos: {},
+  preenchidosPorCategoria: {},
+  trocados: {},
+  removidos: { pontoPadrao: 0, pontoForaDoMunicipio: 0, trocados: 0 },
+  falhas: {},
+  violacoes: { sigiloOuSensivelGeocodificado: 0, pontoFinalForaDoMunicipio: 0 },
+});
 
 const novaCidade = (): CidadeAno => ({
   linhas: 0,
@@ -76,6 +116,7 @@ const novaCidade = (): CidadeAno => ({
   horario: { hora: 0, soPeriodo: 0, nenhum: 0 },
   pontosPorPeriodo: [0, 0, 0, 0],
   atraso: {},
+  geo: novaGeo(),
 });
 
 export interface Global {
@@ -179,9 +220,15 @@ export function montarIndice(partes: Parte[], regras: Regras): IndiceBos {
 
 // ------------------------------------------------------------------------------------- processamento da parte
 
-/** Gancho da geocodificação (Etapa 2). Na linha de base fica vazio: só as coordenadas da SSP. */
-export type Geocodificador = (l: LinhaLimpa) => { lat: number; lng: number } | null;
-export const semGeocodificacao: Geocodificador = () => null;
+/** Gancho da geocodificação: consulta → resultado (do cache montado pelo data:geocodificar). */
+export type Geocodificador = (q: Consulta) => Resultado | null;
+
+/** Geocodificador do processamento: só os BOs candidatos, lidos do cache (null na linha de base). */
+export function geocodificadorDoCache(regras: Regras): Geocodificador | null {
+  if (!regras.geocodificacao) return null;
+  const { mapa } = lerCandidatos();
+  return (q) => mapa.get(chaveConsulta(q)) ?? null;
+}
 
 /** Hexágonos de cada distrito (centro dentro do distrito; se nenhum, os que tocam), por resolução. */
 export function hexagonosDosDistritos(): Map<string, Map<number, string[]>> {
@@ -215,7 +262,7 @@ export function processarLinhas(
   const cidade: Record<string, CidadeAno> = {};
   const global: Global = { linhasLidas: 0, linhasExcluidasPelaDeduplicacao: 0, semDataDeOcorrencia: 0, foraDosAnos: {} };
   const anos = new Set(regras.anos);
-  const geocodificar = ctx.geocodificar ?? semGeocodificacao;
+  const geocodificar = ctx.geocodificar ?? null;
   for (const l of linhas) {
     global.linhasLidas++;
     if (ctx.excluir.has(l.linha)) {
@@ -245,27 +292,29 @@ export function processarLinhas(
       hora !== null ? periodoDaHora(hora) : l.periodo && (PERIODOS as readonly string[]).includes(l.periodo) ? (l.periodo as Periodo) : null;
     const o = { ano, mes, hora, periodo, categoria, peso: CRIME_WEIGHTS[categoria] };
 
-    // Localização: coordenada da SSP (fora dos pontos padrão e dentro da capital) → geocodificação → distrito.
-    let lat = l.lat;
-    let lng = l.lng;
-    let motivo: keyof CidadeAno['semLocalizacao'] | null = null;
-    if (lat !== null && lng !== null) {
-      if (regras.pontosPadrao && CHAVES_PONTOS_PADRAO.has(chavePonto(lat, lng))) motivo = 'pontoPadrao';
-      else if (!ctx.distritoDe(lat, lng)) motivo = 'pontoForaDoMunicipio';
-      if (motivo) lat = lng = null;
-    }
-    let geocodificado = false;
-    if (lat === null || lng === null) {
-      const g = geocodificar(l);
-      if (g && ctx.distritoDe(g.lat, g.lng)) {
-        lat = g.lat;
-        lng = g.lng;
-        geocodificado = true;
-        motivo = null;
+    // Localização: coordenada da SSP (fora dos pontos padrão e dentro da capital) → endereço (preenche ou troca
+    // ponto suspeito) → distrito.
+    const s = situacaoDoPonto(l, regras.pontosPadrao, ctx.distritoDe, regras.geocodificacao?.casasSuspeitas);
+    const dec = decidir(l, categoria, s, regras.geocodificacao, geocodificar, ctx.distritoDe);
+    const g = c.geo;
+    if (s.temCoordenada) g.comCoordenadaSsp++;
+    if (s.suspeito) g.suspeitos++;
+    if (s.pontoPadrao) g.removidos.pontoPadrao++;
+    if (s.foraDoMunicipio) g.removidos.pontoForaDoMunicipio++;
+    if (dec.geo) g.consultas++;
+    if (dec.origem === 'preenchido' || dec.origem === 'trocado') {
+      if (l.sigilo || !l.logradouro || naoGeocodificar(categoria, l.rubrica, l.conduta, l.natureza, l.logradouro)) g.violacoes.sigiloOuSensivelGeocodificado++;
+      if (dec.origem === 'preenchido') {
+        inc(g.preenchidos, dec.geo.nivel!);
+        inc(g.preenchidosPorCategoria, categoria);
+      } else {
+        inc(g.trocados, dec.geo.nivel!);
+        g.removidos.trocados++;
       }
     }
-    if (lat !== null && lng !== null) {
-      somarPonto(agregado, lat, lng, o, geocodificado);
+    if (dec.origem !== 'sem') {
+      if (!ctx.distritoDe(dec.lat, dec.lng)) g.violacoes.pontoFinalForaDoMunicipio++;
+      somarPonto(agregado, dec.lat, dec.lng, o, dec.origem === 'ssp' ? 'ssp' : dec.origem === 'trocado' ? 'trocado' : 'geocodificado');
       c.pontos++;
       inc(c.pontosPorCategoria, categoria);
       if (hora !== null) c.horario.hora++;
@@ -288,8 +337,10 @@ export function processarLinhas(
       inc(c.distribuidosPorCategoria, categoria);
       continue;
     }
-    c.semLocalizacao[motivo ?? (l.sigilo ? 'sigilo' : 'semCoordenada')]++;
+    c.semLocalizacao[dec.motivo ?? (l.sigilo ? 'sigilo' : 'semCoordenada')]++;
     inc(c.semLocalizacaoPorCategoria, categoria);
+    if (dec.bloqueado) g.bloqueados++;
+    if (dec.geo) inc(g.falhas, dec.geo.ok ? `nao_aceito:${dec.geo.nivel}:${dec.geo.dica ?? 'sem_distrito'}` : dec.geo.falha!);
   }
   return { agregado, cidade, global };
 }
@@ -305,6 +356,7 @@ export interface TarefaProcessamento {
 }
 
 let contexto: { distritoDe: (lat: number, lng: number) => string | null; hexDoDistrito: Map<string, Map<number, string[]>> } | null = null;
+let geoDoProcesso: { chave: string; g: Geocodificador | null } | null = null;
 
 export async function processarParte(t: TarefaProcessamento): Promise<{ parte: string; linhas: number }> {
   contexto ??= { distritoDe: carregarMunicipio().distritoDe, hexDoDistrito: hexagonosDosDistritos() };
@@ -316,7 +368,9 @@ export async function processarParte(t: TarefaProcessamento): Promise<{ parte: s
       yield lerLinhaCsv(b);
     }
   })();
-  const r = processarLinhas(linhas, t.regras, { ...contexto, excluir: new Set(t.excluir) });
+  const chaveGeo = JSON.stringify(t.regras.geocodificacao);
+  if (geoDoProcesso?.chave !== chaveGeo) geoDoProcesso = { chave: chaveGeo, g: geocodificadorDoCache(t.regras) };
+  const r = processarLinhas(linhas, t.regras, { ...contexto, excluir: new Set(t.excluir), geocodificar: geoDoProcesso.g ?? undefined });
   const parcial: Parcial = { parte: t.parte.arquivo, hash: t.hash, agregado: Object.fromEntries(r.agregado), cidade: r.cidade, global: r.global };
   fs.mkdirSync(path.dirname(t.destino), { recursive: true });
   fs.writeFileSync(`${t.destino}.tmp`, JSON.stringify(parcial));
@@ -336,7 +390,10 @@ export function hashDaConfiguracao(regras: Regras): string {
     path.join(__dirname, '../lib/semLocalizacao.ts'),
     path.join(__dirname, '../config/crimeWeights.ts'),
     path.join(__dirname, '../config/pontosPadrao.ts'),
+    path.join(__dirname, '../config/naoGeocodificar.ts'),
+    path.join(__dirname, './geocodificacao.ts'),
   ].map((f) => (fs.existsSync(f) ? fs.readFileSync(f, 'utf-8') : f));
+  if (regras.geocodificacao) fontes.push('candidatos:' + hashDosCandidatos());
   return crypto
     .createHash('sha1')
     .update(JSON.stringify({ regras, pesos: CRIME_WEIGHTS, fontes }))
