@@ -19,7 +19,7 @@
     "data:conferir-publico": "npm --prefix scripts run conferir-publico",
     "data:restaurar-backup": "npm --prefix scripts run restaurar-backup --",
     "data:diagnostico": "npm --prefix scripts run diagnostico --",
-    "test": "npm --prefix scripts test",
+    "test": "npm --prefix scripts test && npm --prefix scripts run test:app",
     "test:banco": "npm --prefix scripts run test:banco",
     "data:limpar": "npm --prefix scripts run limpar --",
     "data:processar": "npm --prefix scripts run processar --",

@@ -6,11 +6,12 @@
   "scripts": {
     "import:geo": "tsx --env-file-if-exists=.env importGeo.ts",
     "import:crimes": "tsx --env-file-if-exists=.env importCrimes.ts",
-    "typecheck": "tsc --noEmit",
+    "typecheck": "tsc --noEmit && tsc -p tsconfig.app-test.json",
     "import:postos": "tsx --env-file-if-exists=.env importPostos.ts",
     "diagnostico": "tsx --env-file-if-exists=.env diagnosticoPlanilhas.ts",
     "test": "tsx --test test/*.test.ts",
     "test:banco": "tsx --test test/banco.pglite.ts",
+    "test:app": "tsx --test ../apps/mobile/test/*.test.ts",
     "limpar": "tsx --env-file-if-exists=.env limpar.ts",
     "processar": "tsx --env-file-if-exists=.env processar.ts",
     "consolidar": "tsx --env-file-if-exists=.env consolidar.ts",
