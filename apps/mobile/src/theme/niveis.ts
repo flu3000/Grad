@@ -12,16 +12,16 @@ export const NIVEL_MAXIMO: Nivel = 10;
  * Ver a migration escala_de_10_niveis_por_resolucao.
  */
 export const NIVEL_INFO: Record<Nivel, { rotulo: string; descricao: string }> = {
-  1: { rotulo: 'Poucos registros', descricao: 'Pouca ou nenhuma ocorrência registrada com localização.' },
-  2: { rotulo: 'Muito baixo', descricao: 'Mais perigoso que 15% das áreas com ocorrências.' },
-  3: { rotulo: 'Baixo', descricao: 'Mais perigoso que 30% das áreas com ocorrências.' },
-  4: { rotulo: 'Médio-baixo', descricao: 'Mais perigoso que 45% das áreas com ocorrências.' },
-  5: { rotulo: 'Médio', descricao: 'Mais perigoso que 60% das áreas com ocorrências.' },
-  6: { rotulo: 'Médio-alto', descricao: 'Mais perigoso que 72% das áreas com ocorrências.' },
-  7: { rotulo: 'Alto', descricao: 'Mais perigoso que 82% das áreas com ocorrências.' },
-  8: { rotulo: 'Muito alto', descricao: 'Mais perigoso que 90% das áreas com ocorrências.' },
-  9: { rotulo: 'Grave', descricao: 'Entre os 5% das áreas mais perigosas da cidade.' },
-  10: { rotulo: 'Crítico', descricao: 'Entre os 2% das áreas mais perigosas da cidade.' },
+  1: { rotulo: 'Poucos registros', descricao: 'Poucos ou nenhum registro com localização.' },
+  2: { rotulo: 'Muito baixo', descricao: 'Mais registros que 15% das áreas com registros.' },
+  3: { rotulo: 'Baixo', descricao: 'Mais registros que 30% das áreas com registros.' },
+  4: { rotulo: 'Médio-baixo', descricao: 'Mais registros que 45% das áreas com registros.' },
+  5: { rotulo: 'Médio', descricao: 'Mais registros que 60% das áreas com registros.' },
+  6: { rotulo: 'Médio-alto', descricao: 'Mais registros que 72% das áreas com registros.' },
+  7: { rotulo: 'Alto', descricao: 'Mais registros que 82% das áreas com registros.' },
+  8: { rotulo: 'Muito alto', descricao: 'Mais registros que 90% das áreas com registros.' },
+  9: { rotulo: 'Grave', descricao: 'Entre os 5% das áreas com mais registros da cidade.' },
+  10: { rotulo: 'Crítico', descricao: 'Entre os 2% das áreas com mais registros da cidade.' },
 };
 
 const chave = (n: Nivel) => `level${n}` as const;

@@ -5,7 +5,7 @@ import { useLocalAtual } from '../../../contexts/Local_Atual_Context';
 import { NIVEL_INFO, corDoNivel } from '../../../theme/niveis';
 import * as S from './styles';
 
-/** Card com o nível de perigo de onde o usuário está (via locate_point). */
+/** Card com o nível de registros de onde o usuário está (via locate_point). */
 const Card_Nivel = ({ onPress }: { onPress?: () => void }) => {
   const theme = useTheme();
   const { permissao, info, carregando, erro } = useLocalAtual();

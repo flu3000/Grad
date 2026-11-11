@@ -10,7 +10,7 @@ const Legenda = ({ comUnidades = false }: { comUnidades?: boolean }) => {
   const [aberta, setAberta] = useState(true);
   return (
     <S.Container onPress={() => setAberta((a) => !a)} accessibilityRole="button" accessibilityLabel="Legenda do mapa">
-      <S.Titulo>{aberta ? 'Nível de perigo' : 'Legenda'}</S.Titulo>
+      <S.Titulo>{aberta ? 'Nível de registros' : 'Legenda'}</S.Titulo>
       {aberta && (
         <>
           <S.Faixa>

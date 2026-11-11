@@ -8,7 +8,7 @@
 
 // Iguais nos dois temas.
 const comuns = {
-  // Níveis de perigo: escala sequencial amarelo → laranja → vermelho (ColorBrewer YlOrRd, 9 classes), com o nível 1
+  // Níveis de registros: escala sequencial amarelo → laranja → vermelho (ColorBrewer YlOrRd, 9 classes), com o nível 1
   // neutro de propósito: significa "poucos ou nenhum BO", não "seguro".
   safetyLevels: {
     level1: '#9AA4B1', // Poucos registros
