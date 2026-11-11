@@ -13,6 +13,14 @@ export const Topo = styled.View<{ $topInset: number }>`
   right: 12px;
 `;
 
+/** Chip do ano e filtros de período/hora. */
+export const LinhaFiltros = styled.View`
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
+`;
+
 export const LinhaInferior = styled.View`
   flex-direction: row;
   align-items: flex-start;

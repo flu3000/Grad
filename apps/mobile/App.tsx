@@ -5,6 +5,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { ThemeProvider } from 'styled-components/native';
 import { AuthProvider } from './src/contexts/Auth_Context';
 import { ConfigProvider, useConfig } from './src/contexts/Config_Context';
+import { FiltroProvider } from './src/contexts/Filtro_Context';
 import { LocalAtualProvider } from './src/contexts/Local_Atual_Context';
 import Abas from './src/navigation/Abas';
 import { temaClaro, temaEscuro } from './src/theme/colors';
@@ -48,9 +49,11 @@ export default function App() {
     <SafeAreaProvider>
       <ConfigProvider>
         <AuthProvider>
-          <LocalAtualProvider>
-            <AppComTema />
-          </LocalAtualProvider>
+          <FiltroProvider>
+            <LocalAtualProvider>
+              <AppComTema />
+            </LocalAtualProvider>
+          </FiltroProvider>
         </AuthProvider>
       </ConfigProvider>
     </SafeAreaProvider>

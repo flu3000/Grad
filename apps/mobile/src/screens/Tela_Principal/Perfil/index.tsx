@@ -161,10 +161,11 @@ const Perfil = () => {
       <C.Secao>
         <C.Subtitulo>Sobre os dados</C.Subtitulo>
         <C.TextoSecundario>
-          O mapa usa os boletins de ocorrência de 2025 publicados pela Secretaria da Segurança Pública de São Paulo.
+          O mapa usa os boletins de ocorrência publicados pela Secretaria da Segurança Pública de São Paulo, de 2023 em
+          diante (o ano é escolhido no topo do mapa). Um boletim mede o que foi registrado, não todo crime que aconteceu.
           Cada tipo de crime tem um peso (crimes contra a vida pesam mais que furtos) e a cidade é dividida em
-          hexágonos. O nível, de 1 a 10, compara cada hexágono com os de mesmo tamanho no resto da cidade (por isso
-          pode mudar um pouco ao aproximar o mapa): nível 1 indica poucos registros, não garantia de segurança. As unidades de polícia, GCM e bombeiros vêm da base GeoSampa da Prefeitura.
+          hexágonos. O nível, de 1 a 10, compara cada hexágono com os de mesmo tamanho no resto da cidade, com a mesma escala
+          para todos os anos (por isso pode mudar um pouco ao aproximar o mapa): nível 1 indica poucos registros, não garantia de segurança. As unidades de polícia, GCM e bombeiros vêm da base GeoSampa da Prefeitura.
         </C.TextoSecundario>
         <C.TextoSecundario style={{ marginTop: 8 }}>{`Versão ${Constants.expoConfig?.version ?? '–'}`}</C.TextoSecundario>
       </C.Secao>

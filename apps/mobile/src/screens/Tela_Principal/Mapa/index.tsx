@@ -8,7 +8,9 @@ import Balao_Hexagono from '../../../components/Mapa/Balao_Hexagono';
 import Balao_Unidade from '../../../components/Mapa/Balao_Unidade';
 import Legenda from '../../../components/Mapa/Legenda';
 import Marcador_Unidade from '../../../components/Mapa/Marcador_Unidade';
+import Seletor_Ano from '../../../components/Mapa/Seletor_Ano';
 import { useConfig } from '../../../contexts/Config_Context';
+import { useFiltro } from '../../../contexts/Filtro_Context';
 import { useLocalAtual } from '../../../contexts/Local_Atual_Context';
 import {
   buscarHexagonos,
@@ -62,6 +64,9 @@ const Mapa = ({ navigation }: TelaDaAba<'Mapa'>) => {
   const theme = useTheme();
   const { coords } = useLocalAtual();
   const { config, esquema } = useConfig();
+  const { ano } = useFiltro();
+  const anoRef = useRef(ano);
+  anoRef.current = ano;
   const mostrarUnidades = useRef(config.mostrarUnidades);
   mostrarUnidades.current = config.mostrarUnidades;
   const regiaoAtual = useRef<Region>(REGIAO_SP);
@@ -89,7 +94,7 @@ const Mapa = ({ navigation }: TelaDaAba<'Mapa'>) => {
     // As unidades vêm em paralelo; se falharem, os hexágonos aparecem do mesmo jeito.
     const pedidoUnidades = comUnidades ? buscarUnidades(regiao, controle.signal).catch(() => null) : Promise.resolve([]);
     try {
-      const { res, hexagonos: novos } = await buscarHexagonos(regiao, controle.signal);
+      const { res, hexagonos: novos } = await buscarHexagonos(regiao, { ano: anoRef.current }, controle.signal);
       const novasUnidades = await pedidoUnidades;
       if (controle.signal.aborted) return;
       setHexagonos(novos);
@@ -121,7 +126,7 @@ const Mapa = ({ navigation }: TelaDaAba<'Mapa'>) => {
       setSelecao({ hex, resolucao: res, info: null, carregando: true, erro: false });
       const { latitude, longitude } = centroDoHexagono(hex);
       try {
-        const info = await localizarPonto(latitude, longitude, res);
+        const info = await localizarPonto(latitude, longitude, res, anoRef.current);
         if (id === consultaSelecao.current) setSelecao({ hex, resolucao: res, info, carregando: false, erro: false });
       } catch {
         if (id === consultaSelecao.current) setSelecao({ hex, resolucao: res, info: null, carregando: false, erro: true });
@@ -149,6 +154,20 @@ const Mapa = ({ navigation }: TelaDaAba<'Mapa'>) => {
       setUnidadeSel(null);
     } else carregar(regiaoAtual.current);
   }, [config.mostrarUnidades, carregar]);
+
+  // Trocar o ano recarrega o mapa e o hexágono selecionado.
+  const selecaoRef = useRef(selecao);
+  selecaoRef.current = selecao;
+  const primeiroAno = useRef(true);
+  useEffect(() => {
+    if (primeiroAno.current) {
+      primeiroAno.current = false;
+      return;
+    }
+    carregar(regiaoAtual.current);
+    const sel = selecaoRef.current;
+    if (sel) selecionar(sel.hex, sel.resolucao);
+  }, [ano, carregar, selecionar]);
 
   // Primeira carga (cidade inteira) e limpeza ao sair da tela.
   useEffect(() => {
@@ -178,7 +197,7 @@ const Mapa = ({ navigation }: TelaDaAba<'Mapa'>) => {
         showsUserLocation
         showsMyLocationButton
         toolbarEnabled={false}
-        mapPadding={{ top: insets.top + 96, right: 0, bottom: 0, left: 0 }}
+        mapPadding={{ top: insets.top + 140, right: 0, bottom: 0, left: 0 }}
       >
         {hexagonos.map((h) => {
           const selecionado = selecao?.hex.h3 === h.h3;
@@ -202,6 +221,9 @@ const Mapa = ({ navigation }: TelaDaAba<'Mapa'>) => {
 
       <S.Topo $topInset={insets.top}>
         <Card_Nivel onPress={() => navigation.navigate('Area')} />
+        <S.LinhaFiltros>
+          <Seletor_Ano />
+        </S.LinhaFiltros>
         <S.LinhaInferior>
           <Legenda comUnidades={config.mostrarUnidades} />
           <S.Status>

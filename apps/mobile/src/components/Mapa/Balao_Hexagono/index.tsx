@@ -46,7 +46,7 @@ const Balao_Hexagono = ({ info, resolucao, carregando, erro, onFechar, onTentarD
             </S.Bloco>
           )}
           <S.Bloco>
-            <S.Secao>Ocorrências em 2025</S.Secao>
+            <S.Secao>{info.ano ? `Registros em ${info.ano}` : 'Registros'}</S.Secao>
             <Lista_Ocorrencias contagens={info.contagens} />
           </S.Bloco>
         </S.Rolagem>

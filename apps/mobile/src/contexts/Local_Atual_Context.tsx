@@ -1,6 +1,7 @@
 import React, { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react';
 import * as Location from 'expo-location';
 import { localizarPonto, type LocalInfo } from '../lib/mapa';
+import { useFiltro } from './Filtro_Context';
 
 type Permissao = 'pendente' | 'concedida' | 'negada';
 
@@ -19,7 +20,7 @@ const LocalAtualContext = createContext<LocalAtualState | null>(null);
 // Só reconsulta o nível quando a pessoa anda mais que isso (o hexágono padrão tem ~900 m de diâmetro).
 const DISTANCIA_MINIMA_M = 100;
 
-/** Localização do usuário e o nível do lugar onde ele está (locate_point), compartilhados entre as abas. */
+/** Localização do usuário e o nível do lugar onde ele está (locate_point, no ano do filtro), compartilhados entre as abas. */
 export function LocalAtualProvider({ children }: { children: React.ReactNode }) {
   const [permissao, setPermissao] = useState<Permissao>('pendente');
   const [coords, setCoords] = useState<LocalAtualState['coords']>(null);
@@ -28,12 +29,15 @@ export function LocalAtualProvider({ children }: { children: React.ReactNode }) 
   const [erro, setErro] = useState<string | null>(null);
   const [tentativa, setTentativa] = useState(0);
   const ultimaConsulta = useRef(0);
+  const { ano } = useFiltro();
+  const anoRef = useRef(ano);
+  anoRef.current = ano;
 
   const consultar = useCallback(async (latitude: number, longitude: number) => {
     const id = ++ultimaConsulta.current;
     setCarregando(true);
     try {
-      const resultado = await localizarPonto(latitude, longitude);
+      const resultado = await localizarPonto(latitude, longitude, 8, anoRef.current);
       if (id === ultimaConsulta.current) {
         setInfo(resultado);
         setErro(null);
@@ -78,6 +82,13 @@ export function LocalAtualProvider({ children }: { children: React.ReactNode }) 
       assinatura?.remove();
     };
   }, [consultar, tentativa]);
+
+  // Trocar o ano no filtro reconsulta o local atual.
+  const coordsRef = useRef(coords);
+  coordsRef.current = coords;
+  useEffect(() => {
+    if (ano !== null && coordsRef.current) consultar(coordsRef.current.latitude, coordsRef.current.longitude);
+  }, [ano, consultar]);
 
   const atualizar = useCallback(() => {
     if (permissao === 'concedida' && coords) consultar(coords.latitude, coords.longitude);

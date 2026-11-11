@@ -3,7 +3,9 @@ import { ActivityIndicator } from 'react-native';
 import { useTheme } from 'styled-components/native';
 import Tela_Rolavel from '../../../components/Comum/Tela_Rolavel';
 import * as C from '../../../components/Comum/Tela_Rolavel/styles';
+import { useFiltro } from '../../../contexts/Filtro_Context';
 import { useLocalAtual } from '../../../contexts/Local_Atual_Context';
+import { rotuloAno, rotuloFonte } from '../../../lib/formatacao';
 import Lista_Ocorrencias from '../../../components/Comum/Lista_Ocorrencias';
 import Selo_Nivel from '../../../components/Comum/Selo_Nivel';
 import { AREA_HEXAGONO } from '../../../lib/mapa';
@@ -13,6 +15,7 @@ import * as S from './styles';
 const Area = () => {
   const theme = useTheme();
   const { permissao, info, carregando, erro, atualizar } = useLocalAtual();
+  const { infoAno } = useFiltro();
 
   if (permissao === 'negada') {
     return (
@@ -66,7 +69,7 @@ const Area = () => {
       </C.Secao>
 
       <C.Secao>
-        <C.Subtitulo>Nível de perigo aqui</C.Subtitulo>
+        <C.Subtitulo>{infoAno ? `Nível de registros aqui · ${rotuloAno(infoAno)}` : 'Nível de registros aqui'}</C.Subtitulo>
         {info.nivel ? (
           <Selo_Nivel nivel={info.nivel} />
         ) : (
@@ -76,14 +79,15 @@ const Area = () => {
       </C.Secao>
 
       <C.Secao>
-        <C.Subtitulo>{`Ocorrências em 2025 (hexágono de ${AREA_HEXAGONO[8]})`}</C.Subtitulo>
+        <C.Subtitulo>{`Registros${infoAno ? ` em ${rotuloAno(infoAno)}` : ''} (hexágono de ${AREA_HEXAGONO[8]})`}</C.Subtitulo>
         <Lista_Ocorrencias contagens={info.contagens} />
       </C.Secao>
 
       <C.TextoSecundario>
-        Fonte: boletins de ocorrência da SSP-SP de 2025 com localização. O nível (de 1 a 10) compara este trecho com
-        áreas do mesmo tamanho no resto da cidade, ponderando a gravidade de cada crime. Casos de estupro, publicados sem
-        localização exata, são distribuídos pelo distrito.
+        {`Fonte: boletins de ocorrência com localização (${infoAno ? rotuloFonte(infoAno) : 'SSP-SP'}). ` +
+          'Um boletim mede o que foi registrado, não todo crime que aconteceu. O nível (de 1 a 10) compara este trecho ' +
+          'com áreas do mesmo tamanho no resto da cidade, ponderando a gravidade de cada crime. Casos de estupro, ' +
+          'publicados sem localização exata, são distribuídos pelo distrito.'}
       </C.TextoSecundario>
     </Tela_Rolavel>
   );
