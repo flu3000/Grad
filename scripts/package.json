@@ -10,6 +10,7 @@
     "import:postos": "tsx --env-file-if-exists=.env importPostos.ts",
     "diagnostico": "tsx --env-file-if-exists=.env diagnosticoPlanilhas.ts",
     "test": "tsx --test test/*.test.ts",
+    "test:banco": "tsx --test test/banco.pglite.ts",
     "limpar": "tsx --env-file-if-exists=.env limpar.ts",
     "processar": "tsx --env-file-if-exists=.env processar.ts",
     "consolidar": "tsx --env-file-if-exists=.env consolidar.ts",
@@ -30,6 +31,8 @@
     "proj4": "^2.22.0"
   },
   "devDependencies": {
+    "@electric-sql/pglite": "0.5.16",
+    "@electric-sql/pglite-postgis": "0.2.16",
     "@types/geojson": "^7946.0.16",
     "@types/node": "^26.6.6",
     "tsx": "^4.23.15",

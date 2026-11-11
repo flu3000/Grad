@@ -28,6 +28,7 @@ import { lerManifesto, partesDoManifesto, pastaLimpo } from './src/pipeline/extr
 import { decidir, situacaoDoPonto } from './src/pipeline/geocodificacao';
 import { CATEGORIAS_OFICIAIS, contarNossos, lerOficiais, pastaOficial } from './src/pipeline/oficial';
 import { classificar, geocodificadorDoCache, processarTudo, REGRAS_PADRAO } from './src/pipeline/processamento';
+import { opcoesDoProcessamento } from './processar';
 
 const POR_ANO = 50;
 const LUGARES = [
@@ -277,7 +278,7 @@ function estimarHexStats(linhas: LinhaHex[]) {
 
 async function main() {
   const t0 = Date.now();
-  const proc = await processarTudo(REGRAS_PADRAO, {});
+  const proc = await processarTudo(REGRAS_PADRAO, opcoesDoProcessamento());
   const c = await consolidar(proc, REGRAS_PADRAO, { nome: 'final', escala: 'fixa', conferirSequencial: 3 });
   const r = c.relatorio as Record<string, any>;
   const anos = c.datasets.map((d) => d.year);
