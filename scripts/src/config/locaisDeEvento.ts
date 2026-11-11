@@ -1,7 +1,9 @@
 /**
  * Locais de grandes eventos (shows, jogos, feiras, desfiles, Carnaval de rua): nos dias de evento o número de BOs
  * dispara. Os registros continuam no mapa e na nota (são reais); o relatório do endereço só avisa quando a área
- * de 500 m inclui um destes locais ("X% dos registros deste local aconteceram em Y dias de evento em 2025").
+ * de 500 m inclui um destes locais e, no ano consultado, ≥ 15% dos BOs do local caíram em dias de pico
+ * ("X% dos registros deste local aconteceram em Y dias de evento em 2025"; nos locais de rua, "em dias de grandes eventos
+ * de rua (como Carnaval e Parada)").
  * A tabela `event_venues` (por local e ano) sai da consolidação (`npm run data:consolidar`).
  *
  * Centro e raio revisados em 11/11/2026 pelos picos diários dos BOs (hexágonos res 9 com dias muito acima da média):
@@ -18,6 +20,8 @@ export interface LocalDeEvento {
   lat: number;
   lng: number;
   raioM: number;
+  /** arena = casa de eventos (estádio, autódromo, pavilhão, parque); rua = grandes eventos de rua (Carnaval, Parada) */
+  tipo: 'arena' | 'rua';
 }
 
 /**
@@ -30,15 +34,15 @@ export const DIA_DE_PICO = { minimo: 10, vezesMediana: 5 };
 export const MANTER_LOCAL = { minDias: 3, minPct: 5 };
 
 export const LOCAIS_DE_EVENTO: LocalDeEvento[] = [
-  { nome: 'Autódromo de Interlagos', lat: -23.7035, lng: -46.6985, raioM: 700 },
-  { nome: 'Estádio do Morumbis', lat: -23.5997, lng: -46.7192, raioM: 300 },
-  { nome: 'Neo Química Arena', lat: -23.546, lng: -46.4735, raioM: 300 },
-  { nome: 'Allianz Parque', lat: -23.5275, lng: -46.6785, raioM: 250 },
-  { nome: 'Estádio do Canindé', lat: -23.524, lng: -46.6195, raioM: 300 },
-  { nome: 'Anhembi / Sambódromo', lat: -23.516, lng: -46.643, raioM: 500 },
-  { nome: 'Parque Ibirapuera', lat: -23.5874, lng: -46.6576, raioM: 800 },
-  { nome: 'Expo Center Norte', lat: -23.5125, lng: -46.6135, raioM: 300 },
-  { nome: 'Avenida Paulista', lat: -23.56, lng: -46.658, raioM: 500 },
-  { nome: 'Centro (República / Anhangabaú)', lat: -23.5445, lng: -46.6415, raioM: 400 },
-  { nome: 'Barra Funda (blocos de Carnaval)', lat: -23.522, lng: -46.661, raioM: 300 },
+  { nome: 'Autódromo de Interlagos', lat: -23.7035, lng: -46.6985, raioM: 700, tipo: 'arena' },
+  { nome: 'Estádio do Morumbis', lat: -23.5997, lng: -46.7192, raioM: 300, tipo: 'arena' },
+  { nome: 'Neo Química Arena', lat: -23.546, lng: -46.4735, raioM: 300, tipo: 'arena' },
+  { nome: 'Allianz Parque', lat: -23.5275, lng: -46.6785, raioM: 250, tipo: 'arena' },
+  { nome: 'Estádio do Canindé', lat: -23.524, lng: -46.6195, raioM: 300, tipo: 'arena' },
+  { nome: 'Anhembi / Sambódromo', lat: -23.516, lng: -46.643, raioM: 500, tipo: 'arena' },
+  { nome: 'Parque Ibirapuera', lat: -23.5874, lng: -46.6576, raioM: 800, tipo: 'arena' },
+  { nome: 'Expo Center Norte', lat: -23.5125, lng: -46.6135, raioM: 300, tipo: 'arena' },
+  { nome: 'Avenida Paulista', lat: -23.56, lng: -46.658, raioM: 500, tipo: 'rua' },
+  { nome: 'Centro (República / Anhangabaú)', lat: -23.5445, lng: -46.6415, raioM: 400, tipo: 'rua' },
+  { nome: 'Barra Funda (blocos de Carnaval)', lat: -23.522, lng: -46.661, raioM: 300, tipo: 'rua' },
 ];

@@ -214,6 +214,8 @@ export interface LocalEventoAno {
   lat: number;
   lng: number;
   radius_m: number;
+  /** arena = casa de eventos; rua = grandes eventos de rua (Carnaval, Parada) */
+  kind: 'arena' | 'rua';
   year: number;
   /** BOs com ponto final no raio, no ano */
   bos: number;
@@ -245,6 +247,7 @@ export function locaisDeEvento(cidade: Record<string, CidadeAno>, ultimoMes: str
         lat: v.lat,
         lng: v.lng,
         radius_m: v.raioM,
+        kind: v.tipo,
         year: ano,
         bos,
         median_per_day: med,

@@ -35,6 +35,7 @@ create table public.datasets (
   period_factor real not null default 1 check (period_factor >= 1),  -- peso total ÷ peso com período (cidade)
   hour_factor real not null default 1 check (hour_factor >= 1),      -- peso total ÷ peso com hora (cidade)
   annual_factor real not null default 1 check (annual_factor >= 1),  -- anualização do ano parcial (sazonal)
+  hidden_location jsonb not null default '{}'::jsonb,              -- BOs sem localização (sigilo da SSP): % e frase fixa
   source_files text[] not null default '{}',
   notes text,
   imported_at timestamptz not null default now()
@@ -74,6 +75,7 @@ create table public.event_venues (
   lat double precision not null,
   lng double precision not null,
   radius_m integer not null check (radius_m > 0),
+  kind text not null check (kind in ('arena', 'rua')),           -- arena = casa de eventos; rua = Carnaval, Parada etc.
   bos integer not null check (bos >= 0),                          -- BOs com ponto no raio, no ano
   median_per_day real not null,
   peak_threshold integer not null,                                -- BOs no dia para ser dia de pico
@@ -415,16 +417,19 @@ begin
     limit 1
   ) n on true;
 
-  -- locais de evento cujo raio encosta na área do relatório
+  -- locais de evento cujo raio encosta na área do relatório e que, no ano consultado, tiveram >= 15% dos BOs em dias de pico
   select coalesce(jsonb_agg(jsonb_build_object(
-           'name', v.name, 'bos', v.bos, 'peak_days', v.peak_days, 'pct_in_peak_days', v.pct_in_peak_days,
+           'name', v.name, 'kind', v.kind, 'bos', v.bos, 'peak_days', v.peak_days, 'pct_in_peak_days', v.pct_in_peak_days,
            'distance_m', round(extensions.st_distance(v.geom::extensions.geography, v_geog)::numeric),
-           'message', format('%s%% dos registros deste local (%s) aconteceram em %s dias de evento em %s',
-                             replace(round(v.pct_in_peak_days::numeric)::text, '.', ','), v.name, v.peak_days, v.year))
+           'message', case when v.kind = 'rua'
+             then format('%s%% dos registros da região de %s aconteceram em %s dias de grandes eventos de rua (como Carnaval e Parada) em %s',
+                         round(v.pct_in_peak_days::numeric), v.name, v.peak_days, v.year)
+             else format('%s%% dos registros deste local (%s) aconteceram em %s dias de evento em %s',
+                         round(v.pct_in_peak_days::numeric), v.name, v.peak_days, v.year) end)
            order by v.pct_in_peak_days desc), '[]')
     into v_eventos
   from public.event_venues v
-  where v.year = v_ano and v.peak_days > 0
+  where v.year = v_ano and v.peak_days > 0 and v.pct_in_peak_days >= 15
     and extensions.st_dwithin(v.geom::extensions.geography, v_geog, v_raio + v.radius_m);
 
   select jsonb_build_object(
@@ -458,7 +463,8 @@ begin
     'evolution', coalesce(v_evolucao, '[]'),
     'same_period', v_mesmo_periodo,
     'security_units', coalesce(v_unidades, '{}'),
-    'event_venues', v_eventos
+    'event_venues', v_eventos,
+    'hidden_location', v_ds.hidden_location
   ) into v_out;
   return v_out;
 end;
