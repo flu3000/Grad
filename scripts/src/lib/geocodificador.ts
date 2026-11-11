@@ -2,6 +2,8 @@ import fs from 'fs';
 import path from 'path';
 import zlib from 'zlib';
 import { analisarLogradouro, delecoes, distanciaEdicao, distanciaM } from './endereco';
+import type { Dica } from '../config/geocodificacao';
+import { ENDERECOS_CONHECIDOS, type EnderecoConhecido } from '../config/enderecosConhecidos';
 import { dataDir } from './paths';
 import { normalizarBairro } from './semLocalizacao';
 
@@ -11,10 +13,12 @@ import { normalizarBairro } from './semLocalizacao';
  * pontos próximos entre si (logradouros homônimos em bairros diferentes viram instâncias diferentes).
  *
  * Níveis de busca, nesta ordem:
+ *   0. conhecido    — endereço da lista curada (src/config/enderecosConhecidos.ts: estações, terminais, estádios);
  *   1. exato        — o número existe no CNEFE (coordenada mediana dos endereços com esse número);
- *   2. interpolado  — entre os vizinhos do mesmo lado (paridade), até 200 números de distância entre eles;
- *                     com só um lado disponível, o vizinho do mesmo lado a até 50 números;
- *   3. curto        — logradouro com menos de 1 km de extensão → ponto central;
+ *   2. interpolado  — entre os vizinhos do mesmo lado (paridade), até 200 números e 400 m de distância entre eles
+ *                     (mais longe que isso, não geocodifica); sem um dos lados, o vizinho do mesmo lado a até 50 números;
+ *   3. curto        — logradouro com menos de 1 km de extensão → ponto central (com número, só se ele estiver
+ *                     dentro da faixa de números do trecho ou se o logradouro não tiver outro trecho na cidade);
  *   4. aproximado   — o nome não existe: nome parecido (distância de edição) no mesmo distrito ou vizinho, e
  *                     então 1 a 3 (nível "<n>_aproximado").
  * Homônimos: desempata pelo distrito (do ponto da SSP ou do BAIRRO), depois pelo BAIRRO (localidade do CNEFE);
@@ -64,8 +68,8 @@ export function lerIndice(arquivo = arquivoIndice()): IndiceCnefe {
   return ind;
 }
 
-export type Nivel = 'exato' | 'interpolado' | 'curto';
-export const NIVEIS: Nivel[] = ['exato', 'interpolado', 'curto'];
+export type Nivel = 'conhecido' | 'exato' | 'interpolado' | 'curto';
+export const NIVEIS: Nivel[] = ['conhecido', 'exato', 'interpolado', 'curto'];
 
 export interface Consulta {
   logradouro: string | null;
@@ -82,6 +86,7 @@ export type Falha =
   | 'ambiguo'
   | 'sem_numero_logradouro_longo'
   | 'numero_fora_do_logradouro'
+  | 'interpolacao_distante'
   | 'aproximado_sem_distrito'
   | 'aproximado_ambiguo';
 
@@ -94,14 +99,16 @@ export interface Resultado {
   /** 1 ou 2 vizinhos usados na interpolação */
   lados?: number;
   /** de onde veio o distrito usado no desempate */
-  dica?: 'ponto' | 'bairro' | 'localidade' | null;
+  dica?: Exclude<Dica, 'nenhuma'> | null;
   falha?: Falha;
-  /** logradouro do CNEFE escolhido (para conferência) */
+  /** logradouro do CNEFE escolhido, ou o nome do endereço conhecido (para conferência) */
   cnefe?: string;
 }
 
 const PARIDADE_MAX = 200;
 const VIZINHO_MAX = 50;
+/** Interpolação só entre vizinhos a até esta distância um do outro (o Autódromo caía 3 km longe). */
+const INTERPOLACAO_MAX_M = 400;
 const CURTO_M = 1000;
 const TRUNCADO = 38; // a SSP corta o logradouro perto de 40 caracteres
 
@@ -111,8 +118,16 @@ export class Geocodificador {
   private delecoesParaChaves: Map<string, string[]> | null = null;
   private distritosDaChave = new Map<string, Set<string>>();
   readonly distritos: Set<string>;
+  private conhecidos = new Map<string, EnderecoConhecido[]>();
 
-  constructor(readonly indice: IndiceCnefe) {
+  constructor(
+    readonly indice: IndiceCnefe,
+    conhecidos: readonly EnderecoConhecido[] = ENDERECOS_CONHECIDOS,
+  ) {
+    for (const e of conhecidos) {
+      const k = `${e.logradouro}|${e.numero ?? ''}`;
+      this.conhecidos.set(k, [...(this.conhecidos.get(k) ?? []), e]);
+    }
     indice.instancias.forEach((inst, i) => {
       const l = this.porChave.get(inst.k);
       if (l) l.push(i);
@@ -188,10 +203,15 @@ export class Geocodificador {
   private noLogradouro(i: number, numero: number | null): Omit<Resultado, 'dica'> {
     const inst = this.indice.instancias[i];
     const ponto = (la: number, ln: number) => ({ lat: la / 1e6, lng: ln / 1e6 });
-    const curto = (): Omit<Resultado, 'dica'> =>
-      inst.x < CURTO_M ? { ok: true, ...ponto(inst.m[0], inst.m[1]), nivel: 'curto' } : { ok: false, falha: numero ? 'numero_fora_do_logradouro' : 'sem_numero_logradouro_longo' };
-    if (!numero || !inst.n.length) return curto();
     const n = inst.n;
+    // Com número fora da faixa do trecho e outro trecho com o mesmo nome na cidade, o número está no outro trecho
+    // ("Av. Dr. Assis Ribeiro, 4777" caía no centro de um pedaço curto, 2 km longe).
+    const foraDaFaixa = !!numero && n.length > 0 && (numero < n[0] || numero > n[n.length - 1]) && this.porChave.get(inst.k)!.length > 1;
+    const curto = (): Omit<Resultado, 'dica'> =>
+      inst.x < CURTO_M && !foraDaFaixa
+        ? { ok: true, ...ponto(inst.m[0], inst.m[1]), nivel: 'curto' }
+        : { ok: false, falha: numero ? 'numero_fora_do_logradouro' : 'sem_numero_logradouro_longo' };
+    if (!numero || !n.length) return curto();
     // busca binária: primeira posição com n[p] >= numero
     let lo = 0;
     let hi = n.length;
@@ -214,13 +234,28 @@ export class Geocodificador {
         b = j;
         break;
       }
+    let distante = false;
     if (a >= 0 && b >= 0 && n[b] - n[a] <= PARIDADE_MAX) {
-      const t = (numero - n[a]) / (n[b] - n[a]);
-      return { ok: true, ...ponto(inst.la[a] + t * (inst.la[b] - inst.la[a]), inst.ln[a] + t * (inst.ln[b] - inst.ln[a])), nivel: 'interpolado', lados: 2 };
+      distante = distanciaM(inst.la[a] / 1e6, inst.ln[a] / 1e6, inst.la[b] / 1e6, inst.ln[b] / 1e6) > INTERPOLACAO_MAX_M;
+      if (!distante) {
+        const t = (numero - n[a]) / (n[b] - n[a]);
+        return { ok: true, ...ponto(inst.la[a] + t * (inst.la[b] - inst.la[a]), inst.ln[a] + t * (inst.ln[b] - inst.ln[a])), nivel: 'interpolado', lados: 2 };
+      }
     }
+    // Vizinhos longe um do outro: o número fica num vão do CNEFE; não chuta (nem o vizinho nem o centro). Na
+    // calibração, voltar para o vizinho mais próximo nesses casos punha ~30% a mais de 1 km.
+    if (distante) return { ok: false, falha: 'interpolacao_distante' };
     const perto = [a, b].filter((j) => j >= 0 && Math.abs(n[j] - numero) <= VIZINHO_MAX).sort((x, y) => Math.abs(n[x] - numero) - Math.abs(n[y] - numero));
     if (perto.length) return { ok: true, ...ponto(inst.la[perto[0]], inst.ln[perto[0]]), nivel: 'interpolado', lados: 1 };
     return curto();
+  }
+
+  /** Endereço da lista curada: mesmo logradouro e número (ou sem número) e, se a lista pedir, um dos bairros. */
+  private conhecido(logradouro: string, numero: number | null, bairro: string | null): EnderecoConhecido | null {
+    const lista = this.conhecidos.get(`${logradouro}|${numero ?? ''}`);
+    if (!lista) return null;
+    const b = bairro ? normalizarBairro(bairro) : null;
+    return lista.find((e) => !e.bairros || (b !== null && e.bairros.includes(b))) ?? null;
   }
 
   private fuzzy(chave: string, distrito: string): string[] | 'aproximado_ambiguo' | null {
@@ -275,6 +310,8 @@ export class Geocodificador {
     // vezes vem cortada (1, 15).
     const numero = lg.numero ?? (lg.semNumero ? null : q.numero);
     const { distrito, dica } = this.dicaDeDistrito(q);
+    const conhecido = this.conhecido(`${lg.tipo ?? ''} ${lg.completo}`.trim(), numero, q.bairro);
+    if (conhecido) return { ok: true, lat: conhecido.lat, lng: conhecido.lng, nivel: 'conhecido', dica, cnefe: conhecido.nome };
     let ids = this.porChave.get(lg.chave);
     let aproximado = false;
     if (!ids && q.logradouro.trim().length >= TRUNCADO) {

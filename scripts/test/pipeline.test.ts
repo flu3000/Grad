@@ -222,7 +222,9 @@ test('geocodificação: decisão por nível e origem do distrito; nunca sigilo n
   assert.equal(decidir(base, 'furto_outros', sem, GEOCODIFICACAO, geo('exato', 'bairro'), distritoDe).origem, 'preenchido');
   assert.equal(decidir(base, 'furto_outros', sem, GEOCODIFICACAO, geo('exato', null), distritoDe).origem, 'sem'); // sem distrito, não
   assert.equal(decidir(base, 'furto_outros', sem, GEOCODIFICACAO, geo('interpolado', 'localidade'), distritoDe).origem, 'sem');
-  assert.equal(decidir(base, 'furto_outros', sem, GEOCODIFICACAO, geo('curto', 'bairro'), distritoDe).origem, 'sem');
+  assert.equal(decidir(base, 'furto_outros', sem, GEOCODIFICACAO, geo('curto', 'bairro'), distritoDe).origem, 'preenchido');
+  assert.equal(decidir(base, 'furto_outros', sem, GEOCODIFICACAO, geo('curto', 'localidade'), distritoDe).origem, 'sem');
+  assert.equal(decidir(base, 'furto_outros', sem, GEOCODIFICACAO, geo('conhecido', null), distritoDe).origem, 'preenchido');
   assert.equal(decidir(base, 'furto_outros', sem, null, geo('exato', 'bairro'), distritoDe).origem, 'sem'); // linha de base
   assert.equal(decidir({ ...base, sigilo: true }, 'furto_outros', sem, GEOCODIFICACAO, geo('exato', 'bairro'), distritoDe).origem, 'sem');
   assert.equal(decidir(base, 'estupro', sem, GEOCODIFICACAO, geo('exato', 'bairro'), distritoDe).origem, 'sem');

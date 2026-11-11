@@ -172,3 +172,49 @@ test('busca: o número escrito no logradouro vale mais que a coluna NUMERO', () 
   assert.equal(g.geocodificar({ logradouro: 'RUA GLICERIO, 102', numero: 1, bairro: null, distrito: 'SE' }).nivel, 'exato');
   assert.equal(g.geocodificar({ logradouro: 'RUA GLICERIO', numero: 102, bairro: null, distrito: 'SE' }).nivel, 'exato');
 });
+
+test('busca: trava da interpolação (vizinhos a mais de 400 m um do outro)', () => {
+  const ns = [100, 300];
+  const g3 = new Geocodificador({
+    ...indice,
+    // 100 e 300 a ~1,1 km um do outro (0,01° de latitude)
+    instancias: [inst({ t: 'RUA', c: 'LONGE', k: 'LONGE', n: ns, la: [-23_550_000, -23_540_000], ln: [-46_630_000, -46_630_000] })],
+  });
+  const r = (n: number) => g3.geocodificar({ logradouro: 'RUA LONGE', numero: n, bairro: null, distrito: 'SE' });
+  assert.equal(r(200).falha, 'interpolacao_distante'); // não interpola nem cai no centro
+  assert.equal(r(120).falha, 'interpolacao_distante'); // nem fica com o 100, a 20 números (vão no CNEFE)
+  const viz = r(80); // abaixo do 100: só um lado, a 20 números
+  assert.equal(viz.lados, 1);
+  assert.ok(Math.abs(viz.lat! - -23.55) < 1e-9);
+});
+
+test('busca: curto não vale para número fora da faixa quando o logradouro tem outro trecho', () => {
+  const a = [10, 12, 14];
+  const b = [500, 502, 504];
+  const g4 = new Geocodificador({
+    ...indice,
+    instancias: [
+      inst({ t: 'RUA', c: 'PARTIDA', k: 'PARTIDA', d: ['SE'], x: 300, n: a, la: a.map(() => -23_550_000), ln: a.map(() => -46_630_000) }),
+      inst({ t: 'RUA', c: 'PARTIDA', k: 'PARTIDA', d: ['MOOCA'], x: 300, n: b, la: b.map(() => -23_560_000), ln: b.map(() => -46_600_000) }),
+      inst({ t: 'RUA', c: 'UNICA', k: 'UNICA', d: ['SE'], x: 300, n: a, la: a.map(() => -23_550_000), ln: a.map(() => -46_630_000) }),
+    ],
+  });
+  const r = (l: string, n: number | null) => g4.geocodificar({ logradouro: l, numero: n, bairro: null, distrito: 'SE' });
+  assert.equal(r('RUA PARTIDA', 502).falha, 'numero_fora_do_logradouro'); // o 502 está no outro trecho
+  assert.equal(r('RUA PARTIDA', null).nivel, 'curto');
+  assert.equal(r('RUA UNICA', 502).nivel, 'curto'); // trecho único na cidade: o centro serve
+});
+
+test('busca: endereço conhecido (lista curada) vem antes do índice', () => {
+  const g5 = new Geocodificador(indice, [
+    { nome: 'Teste', logradouro: 'RUA GLICERIO', numero: 999, lat: -23.5, lng: -46.6, origem: 'teste' },
+    { nome: 'Estação', logradouro: 'RUA GLICERIO', numero: null, bairros: ['BRAS'], lat: -23.4, lng: -46.5, origem: 'teste' },
+  ]);
+  const r = g5.geocodificar({ logradouro: 'R DO GLICÉRIO', numero: 999, bairro: null, distrito: null });
+  assert.equal(r.nivel, 'conhecido');
+  assert.equal(r.lat, -23.5);
+  assert.equal(r.cnefe, 'Teste');
+  assert.equal(g5.geocodificar({ logradouro: 'RUA GLICERIO', numero: null, bairro: 'Brás', distrito: null }).nivel, 'conhecido');
+  assert.notEqual(g5.geocodificar({ logradouro: 'RUA GLICERIO', numero: null, bairro: 'Sé', distrito: 'SE' }).nivel, 'conhecido');
+  assert.equal(g5.geocodificar({ logradouro: 'RUA GLICERIO', numero: 102, bairro: null, distrito: 'SE' }).nivel, 'exato');
+});

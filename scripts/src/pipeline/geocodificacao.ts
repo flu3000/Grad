@@ -76,9 +76,9 @@ export type Decisao =
   | { origem: 'trocado'; lat: number; lng: number; geo: Resultado; distanciaM: number }
   | { origem: 'sem'; motivo: 'pontoPadrao' | 'pontoForaDoMunicipio' | null; geo: Resultado | null; bloqueado: boolean };
 
-/** O resultado chegou a um nível aceito, com o distrito vindo de uma fonte aceita para esse nível? */
+/** O resultado chegou a um nível aceito, com o distrito vindo de uma fonte aceita para esse nível ('nenhuma' = sem distrito)? */
 export const nivelAceito = (geo: Resultado, regras: RegrasGeocodificacao) =>
-  !!geo.ok && !!geo.dica && (regras.aceitar[geo.nivel!] ?? []).includes(geo.dica);
+  !!geo.ok && (regras.aceitar[geo.nivel!] ?? []).includes(geo.dica ?? 'nenhuma');
 
 /**
  * Decide a coordenada final do BO.

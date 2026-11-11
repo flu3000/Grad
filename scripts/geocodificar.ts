@@ -3,8 +3,8 @@
  *
  *   npm run data:geocodificar      (precisa de data:limpar e data:indice-cnefe)
  *
- * 1. Lê as partes limpas: monta as consultas únicas (logradouro, número, bairro, distrito do ponto da SSP), conta
- *    os BOs por coordenada (detector de pontos padrão) e por dia perto dos locais de evento.
+ * 1. Lê as partes limpas: monta as consultas únicas (logradouro, número, bairro, distrito do ponto da SSP) e conta
+ *    os BOs por coordenada (detector de pontos padrão). Os locais de evento são medidos no processamento.
  * 2. Geocodifica o que não está no cache (scripts/out/cache/geocodificacao.jsonl).
  * 3. Calibra: distância entre o endereço geocodificado e a coordenada confiável da SSP (sem sigilo, fora dos
  *    pontos padrão, com 4+ casas decimais), por nível e ano. Duas variantes: com o distrito do ponto (como nos
@@ -17,8 +17,8 @@ import fs from 'fs';
 import path from 'path';
 import zlib from 'zlib';
 import { GEOCODIFICACAO } from './src/config/geocodificacao';
-import { LOCAIS_DE_EVENTO } from './src/config/locaisDeEvento';
 import { CHAVES_PONTOS_PADRAO, chavePonto, DETECTOR_PONTO_PADRAO } from './src/config/pontosPadrao';
+import { normalizeText } from './src/config/crimeWeights';
 import { analisarLogradouro, distanciaM } from './src/lib/endereco';
 import { arquivoIndice, Geocodificador, lerIndice, type Consulta, type Resultado } from './src/lib/geocodificador';
 import { lerLinhaCsv, type LinhaLimpa } from './src/lib/limpeza';
@@ -106,7 +106,7 @@ function resumoDistancias(ds: number[], acertosDistrito: number) {
 // ----------------------------------------------------------------------------------------------- cache
 
 function cabecalhoDoCache() {
-  const fontes = ['src/lib/endereco.ts', 'src/lib/geocodificador.ts'].map((f) => fs.readFileSync(path.join(__dirname, f), 'utf-8')).join('\n');
+  const fontes = ['src/lib/endereco.ts', 'src/lib/geocodificador.ts', 'src/config/enderecosConhecidos.ts'].map((f) => fs.readFileSync(path.join(__dirname, f), 'utf-8')).join('\n');
   const st = fs.statSync(arquivoIndice());
   return { versao: 1, indice: `${st.size}:${st.mtimeMs}`, codigo: crypto.createHash('sha1').update(fontes).digest('hex').slice(0, 12) };
 }
@@ -162,16 +162,11 @@ async function main() {
   const candidatas = new Set<string>();
   const porPonto = new Map<string, number>();
   const pontosSuspeitosContagem = { linhas: 0 };
-  const caixa = LOCAIS_DE_EVENTO.map((v) => ({ ...v, dLat: v.raioM / 111_000, dLng: v.raioM / (111_000 * Math.cos((v.lat * Math.PI) / 180)) }));
-  const eventoDias = LOCAIS_DE_EVENTO.map(() => new Map<string, number>());
-  let datas = { min: '9999', max: '0000' };
   let linhas = 0;
   for (const l of linhasDasPartes()) {
     const ano = anoDe(l);
     if (!ano || !ANOS.has(ano)) continue;
     linhas++;
-    if (l.data_ocorrencia! < datas.min) datas.min = l.data_ocorrencia!;
-    if (l.data_ocorrencia! > datas.max) datas.max = l.data_ocorrencia!;
     const categoria = classificar(l.rubrica, l.natureza, REGRAS_PADRAO);
     const s = situacaoDoPonto(l, true, municipio.distritoDe);
     if (s.temCoordenada && !s.foraDoMunicipio && (s.pontoPadrao || !s.suspeito)) {
@@ -180,11 +175,6 @@ async function main() {
     }
     if (s.suspeito) pontosSuspeitosContagem.linhas++;
     const usavel = s.temCoordenada && !s.pontoPadrao && !s.foraDoMunicipio;
-    if (usavel && !s.suspeito)
-      caixa.forEach((v, i) => {
-        if (Math.abs(l.lat! - v.lat) <= v.dLat && Math.abs(l.lng! - v.lng) <= v.dLng && distanciaM(l.lat!, l.lng!, v.lat, v.lng) <= v.raioM)
-          eventoDias[i].set(l.data_ocorrencia!, (eventoDias[i].get(l.data_ocorrencia!) ?? 0) + 1);
-      });
     if (!podeGeocodificar(l, categoria) || s.foraDoMunicipio) continue;
     const q = consultaDe(l, s.distrito);
     const k = chaveConsulta(q);
@@ -243,7 +233,11 @@ async function main() {
       if (municipio.distritoDe(r.lat!, r.lng!) === distrito) g.acertos++;
     }
   };
-  const tipos = ['preenchido_exato', 'preenchido_interpolado', 'preenchido_curto', 'preenchido_aproximado', 'trocado', 'divergente_mantido'];
+  const tipos = ['preenchido_conhecido', 'preenchido_exato', 'preenchido_interpolado', 'preenchido_curto', 'preenchido_aproximado', 'trocado', 'divergente_mantido'];
+  // O que o curto e os endereços conhecidos acrescentam (BOs preenchidos por ano, categoria e logradouro).
+  const curto = { porAno: {} as Record<string, number>, porCategoria: {} as Record<string, Record<string, number>>, logradouros: new Map<string, { n: number; porAno: Record<string, number>; estacao: number }>() };
+  const conhecidos = new Map<string, Record<string, number>>();
+  const ehEstacao = (l: LinhaLimpa) => /METROVI|FERROVI|TERMINAL|ESTACAO/.test(normalizeText(`${l.tipo_local ?? ''} ${l.subtipo_local ?? ''}`));
   const amostras = Object.fromEntries(tipos.map((t) => [t, new Reservatorio<Caso>(POR_TIPO, rnd)]));
   const divergencia: Record<string, { comparados: number; acima300: number; acima1km: number }> = {};
   const candidatosPorAno: Record<string, Record<string, number>> = {};
@@ -294,6 +288,22 @@ async function main() {
     const tipoCand = !s.temCoordenada ? 'sem_coordenada' : s.pontoPadrao ? 'ponto_padrao' : 'suspeito';
     cp[tipoCand] = (cp[tipoCand] ?? 0) + 1;
     const dec = decidir(l, categoria, s, regrasGeo, geocodificar, municipio.distritoDe);
+    if (dec.origem === 'preenchido' && dec.geo.nivel === 'curto') {
+      curto.porAno[ano] = (curto.porAno[ano] ?? 0) + 1;
+      const pc = (curto.porCategoria[categoria] ??= {});
+      pc[ano] = (pc[ano] ?? 0) + 1;
+      const k = `${dec.geo.cnefe} (${l.bairro ?? 'sem bairro'})`;
+      const x = curto.logradouros.get(k) ?? { n: 0, porAno: {}, estacao: 0 };
+      curto.logradouros.set(k, x);
+      x.n++;
+      x.porAno[ano] = (x.porAno[ano] ?? 0) + 1;
+      if (ehEstacao(l)) x.estacao++;
+    }
+    if (dec.origem === 'preenchido' && dec.geo.nivel === 'conhecido') {
+      const c = conhecidos.get(dec.geo.cnefe!) ?? {};
+      conhecidos.set(dec.geo.cnefe!, c);
+      c[ano] = (c[ano] ?? 0) + 1;
+    }
     if (dec.origem === 'trocado') amostras.trocado.add(caso('trocado', l, ano, categoria, r, true, dec.distanciaM));
     else if (!usavel || s.pontoPadrao) {
       if (r.ok && municipio.distritoDe(r.lat!, r.lng!)) {
@@ -354,29 +364,16 @@ async function main() {
   const detectados = pontos.filter((p) => p.razao >= DETECTOR_PONTO_PADRAO.razaoMinima);
   const quase = pontos.filter((p) => p.razao < DETECTOR_PONTO_PADRAO.razaoMinima && p.razao >= 0.25).slice(0, 15);
 
-  // eventos: dias com BOs muito acima da mediana do local
-  const dias: string[] = [];
-  for (let d = new Date(`${datas.min}T12:00:00Z`); d.toISOString().slice(0, 10) <= datas.max; d.setUTCDate(d.getUTCDate() + 1)) dias.push(d.toISOString().slice(0, 10));
-  const eventos = LOCAIS_DE_EVENTO.map((v, i) => {
-    const m = eventoDias[i];
-    const serie = dias.map((d) => m.get(d) ?? 0);
-    const ordenada = [...serie].sort((a, b) => a - b);
-    const med = quantil(ordenada, 0.5);
-    const p95 = quantil(ordenada, 0.95);
-    const limite = Math.max(8, 4 * Math.max(1, p95));
-    const picos = [...m].filter(([, n]) => n >= limite).sort((a, b) => b[1] - a[1]);
-    const total = serie.reduce((a, b) => a + b, 0);
-    return {
-      ...v,
-      bos: total,
-      mediana_por_dia: med,
-      p95_por_dia: p95,
-      limite_de_pico: limite,
-      dias_de_pico: picos.length,
-      bos_nos_picos_pct: r1((100 * picos.reduce((a, [, n]) => a + n, 0)) / Math.max(1, total)),
-      maiores_dias: [...m].sort((a, b) => b[1] - a[1]).slice(0, 6).map(([d, n]) => `${d}: ${n}`),
-    };
-  });
+  const curtoRelatorio = {
+    por_ano: curto.porAno,
+    por_categoria: curto.porCategoria,
+    top20_logradouros: [...curto.logradouros]
+      .sort((a, b) => b[1].n - a[1].n)
+      .slice(0, 20)
+      .map(([k, x]) => ({ logradouro: k, bos: x.n, por_ano: x.porAno, estacao_ou_terminal_pct: Math.round((100 * x.estacao) / x.n) })),
+  };
+  const somaObj = (o: Record<string, number>) => Object.values(o).reduce((x, y) => x + y, 0);
+  const conhecidosRelatorio = Object.fromEntries([...conhecidos].sort((a, b) => somaObj(b[1]) - somaObj(a[1])));
 
   const casos = tipos.flatMap((t) => amostras[t].itens);
   const relatorio = {
@@ -391,7 +388,8 @@ async function main() {
     divergencia_dos_pontos_confiaveis: divergencia,
     candidatos_por_ano: candidatosPorAno,
     pontos_padrao: { criterio: DETECTOR_PONTO_PADRAO, detectados, quase_no_limite: quase },
-    locais_de_evento: eventos,
+    curto: curtoRelatorio,
+    conhecidos: conhecidosRelatorio,
     amostras: Object.fromEntries(tipos.map((t) => [t, { casos: amostras[t].itens.length, populacao: amostras[t].vistos }])),
     tempos_s: { indice: segIndice, passada1: segPassada1, geocodificacao: segGeo, passada2: segPassada2, total: seg(t0) },
     cache: { arquivo: arquivoCache(), mb: Number((fs.statSync(arquivoCache()).size / 1e6).toFixed(1)), candidatos_mb: Number((fs.statSync(arquivoCandidatos()).size / 1e6).toFixed(1)) },
@@ -502,9 +500,16 @@ function imprimir(r: Relatorio) {
     L(`  ${p.confirmado ? '[confirmado] ' : ''}${p.lat}, ${p.lng} | ${p.bos} BOs, ${p.logradouros_distintos} logradouros (razão ${p.razao}) | ${p.distrito} | ${JSON.stringify(p.por_ano)} | ${p.logradouros_mais_comuns.join('; ')}`);
   L('  Quase no limite (razão 0,25–0,5):');
   for (const p of r.pontos_padrao.quase_no_limite) L(`    ${p.lat}, ${p.lng} | ${p.bos} BOs, razão ${p.razao} | ${p.distrito} | ${p.logradouros_mais_comuns.join('; ')}`);
-  L('\nLocais de evento (BOs com coordenada confiável no raio; pico = dia com ≥ max(8, 4 × p95 diário)):');
-  for (const e of r.locais_de_evento)
-    L(`  ${e.nome.padEnd(48)} ${String(e.bos).padStart(5)} BOs | mediana ${e.mediana_por_dia}/dia, p95 ${e.p95_por_dia} | ${e.dias_de_pico} dias de pico (${e.bos_nos_picos_pct}% dos BOs) | ${e.maiores_dias.slice(0, 4).join(', ')}`);
+  const somaO = (o: Record<string, number>) => Object.values(o).reduce((p, q) => p + q, 0);
+  L('\nCurto (centro de logradouro < 1 km, BAIRRO = distrito): BOs preenchidos por ano');
+  L(`  ${JSON.stringify(r.curto.por_ano)}`);
+  L('  por categoria:');
+  for (const [c, x] of Object.entries(r.curto.por_categoria as Record<string, Record<string, number>>).sort((a, b) => somaO(b[1]) - somaO(a[1])))
+    L(`    ${c.padEnd(20)} ${JSON.stringify(x)}`);
+  L('  20 logradouros que mais recebem BOs pelo curto (% com local "Metroviário e Ferroviário" ou terminal):');
+  for (const x of r.curto.top20_logradouros) L(`    ${String(x.bos).padStart(5)}  ${x.logradouro}  ${JSON.stringify(x.por_ano)}  estação/terminal ${x.estacao_ou_terminal_pct}%`);
+  L('\nEndereços conhecidos (BOs preenchidos por ano):');
+  for (const [n, x] of Object.entries(r.conhecidos as Record<string, Record<string, number>>)) L(`  ${n.padEnd(60)} ${JSON.stringify(x)}`);
   L(`\nAmostras para conferência: ${Object.entries(r.amostras).map(([t, a]: [string, any]) => `${t} ${a.casos}/${a.populacao}`).join(' | ')}`);
   L(`Tempos (s): ${JSON.stringify(r.tempos_s)} | cache ${r.cache.mb} MB, candidatos ${r.cache.candidatos_mb} MB`);
   L(`Arquivos: scripts/out/geocodificacao/relatorio.json, scripts/out/verificacao_coordenadas.csv e .html`);
