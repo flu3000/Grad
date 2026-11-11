@@ -11,6 +11,22 @@
     "data:import-geo": "npm --prefix scripts run import:geo --",
     "data:import-crimes": "npm --prefix scripts run import:crimes --",
     "mobile:go": "npm --prefix apps/mobile run go",
-    "data:import-postos": "npm --prefix scripts run import:postos --"
+    "data:import-postos": "npm --prefix scripts run import:postos --",
+    "data:verificar": "npm --prefix scripts run verificar --",
+    "data:backup": "npm --prefix scripts run backup",
+    "data:gravar": "npm --prefix scripts run gravar --",
+    "data:conferir-banco": "npm --prefix scripts run conferir-banco",
+    "data:conferir-publico": "npm --prefix scripts run conferir-publico",
+    "data:restaurar-backup": "npm --prefix scripts run restaurar-backup --",
+    "data:diagnostico": "npm --prefix scripts run diagnostico --",
+    "test": "npm --prefix scripts test",
+    "test:banco": "npm --prefix scripts run test:banco",
+    "data:limpar": "npm --prefix scripts run limpar --",
+    "data:processar": "npm --prefix scripts run processar --",
+    "data:consolidar": "npm --prefix scripts run consolidar --",
+    "data:comparar-banco": "npm --prefix scripts run comparar-banco --",
+    "data:indice-cnefe": "npm --prefix scripts run indice-cnefe --",
+    "data:geocodificar": "npm --prefix scripts run geocodificar --",
+    "data:comparar-geocodificacao": "npm --prefix scripts run comparar-geocodificacao --"
   }
 }

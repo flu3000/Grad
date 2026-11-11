@@ -18,7 +18,8 @@ de boletins de ocorrência da SSP-SP. Projeto pessoal; idioma do código e dos c
 - `scripts` — ingestão local (TypeScript + tsx): GeoSampa e SSP-SP → Supabase. Pesos em `scripts/src/config/crimeWeights.ts`.
 - `supabase` — backend: Postgres + PostGIS + Supabase Auth (sa-east-1), sem servidor próprio (`docs/DECISAO_BACKEND.md`).
   A antiga API Express + MongoDB foi removida na Fase 2.3 (está no histórico do Git); o Railway foi abandonado.
-- `data` — GeoJSON da GeoSampa (distritos, subprefeituras e `seguranca/`: PM, Polícia Civil, GCM e Bombeiros) e do Rio (sem uso); a planilha da SSP-SP fica em `data/SSP-SP/`, fora do Git.
+- `data` — GeoJSON da GeoSampa (distritos, subprefeituras e `seguranca/`: PM, Polícia Civil, GCM e Bombeiros) e do Rio (sem uso); as planilhas da SSP-SP ficam em `data/SSP-SP/` e o CNEFE em `data/cnefe/`, fora do Git.
+- Endereços de BOs **nunca** saem do computador (geocodificação só com o CNEFE local; no banco e no app, só agregados).
 - Cada pacote (`apps/mobile`, `scripts`) tem seu próprio `package.json` e `package-lock.json` (não há npm workspaces de propósito:
   evita problemas de hoisting com o Metro/Expo).
 
@@ -27,15 +28,21 @@ de boletins de ocorrência da SSP-SP. Projeto pessoal; idioma do código e dos c
 - Tabelas com RLS de leitura pública e sem escrita pelo cliente; funções com `security invoker` e `set search_path = ''`
   (qualificar tudo: `extensions.st_*`, `public.tabela`).
 - Rodar os advisors (segurança e performance) depois de toda mudança de esquema.
+- O MCP registra a migration com o horário da aplicação: renomear o arquivo local para essa versão. Cada migration tem
+  um rollback em `supabase/rollback/*.down.sql` (não aplicar sem o pedido do dono) e backup antes (`data:backup`).
 
 ## Comandos
 - Instalar: `npm run install:all` (ou `npm ci` dentro de cada pacote)
-- Dados (com `scripts/.env`): `npm run data:import-geo`, `npm run data:import-crimes` e `npm run data:import-postos`
-  (simulam; `-- --gravar` grava)
+- Dados (com `scripts/.env`): `npm run data:import-geo` e `npm run data:import-postos` (simulam; `-- --gravar` grava).
+  BOs: `data:limpar → data:indice-cnefe → data:geocodificar → data:processar → data:consolidar → data:verificar →
+  data:backup → data:gravar → data:conferir-banco / data:conferir-publico` (detalhes em `scripts/README.md`; o
+  `data:gravar` simula e só grava com `-- --gravar`, nunca apaga). Tarefas pesadas com `--workers=4`, uma por vez.
 - Mobile: `npm run mobile:start` abre no app de desenvolvimento; `npm run mobile:go` abre no Expo Go (validar deps nativas com `npx expo install --check` em `apps/mobile`);
   validar o build sem celular: `npx expo export --platform android --platform ios` em `apps/mobile`
 - Checagem de tipos (rodar antes de todo commit): `npm run typecheck`
-- Não há testes automatizados ainda.
+- Testes (rodar antes de todo commit dos scripts): `npm test` (pipeline) e `npm run test:banco` (aplica todas as
+  migrations num Postgres local — PGlite + PostGIS — e confere funções, permissões e rollback; rodar antes de aplicar
+  uma migration). O app ainda não tem testes.
 - `npm audit`: não usar `--force` no app (troca o SDK do Expo); ver a seção de dependências em `docs/DIAGNOSTICO.md`.
 - O SDK precisa ser o mesmo do Expo Go instalado no celular (a loja só oferece o mais recente). Neste ambiente da nuvem,
   rodar o CLI do Expo com `EXPO_OFFLINE=1` (a rede bloqueia a API do Expo).
@@ -79,8 +86,12 @@ e-mail/senha removidas (decisão do dono). Fase 3.6 em código: login Google/App
 convidado com `linkIdentity`), `expo-dev-client`, `eas.json` e `app.config.ts` (plugins que dependem de credenciais);
 falta o dono criar as credenciais e o primeiro build — passo a passo em `docs/LOGIN_SOCIAL.md`.
 Escala de perigo com **10 níveis**, cortes calculados **por resolução** (percentis 15/30/45/60/72/82/90/95/98 dos
-hexágonos com BO daquele tamanho; nível 10 = 2% mais perigosos). Migration `escala_de_10_niveis_por_resolucao` e
-`scripts/src/lib/scoring.ts` usam a mesma regra.
+hexágonos com BO daquele tamanho; nível 10 = 2% mais perigosos).
+Fase 3.7 (dados) concluída em 11/11/2026: 2023–2026 (2026 até agosto, anualizado pela sazonalidade), BO uma vez na
+categoria mais grave, Tema 506, pontos padrão, geocodificação local pelo CNEFE (níveis aprovados e trava de 400 m),
+**escala fixa** (cortes de 2023–2025 juntos, os mesmos para todo ano, período e hora). No banco: `hex_stats` (por ano,
+período, hora e mês), `datasets`, `level_breaks`, `event_venues` e `address_report`; `hex_cells` espelha 2025 para o app
+atual. Falta: números oficiais da SSP (dono baixa para `data/SSP-SP/oficial/`) e o app (Etapa 6, branch nova da `main`).
 Extras (antes do login social): unidades de segurança no mapa (tabela `security_units` + `security_units_in_view`, 340
 unidades da GeoSampa, sem telefone próprio), aba Emergência com telefones úteis e configurações com tema claro/escuro.
 Ver `docs/DIAGNOSTICO.md` (bugs conhecidos), `docs/DECISAO_BACKEND.md` (por que Supabase) e

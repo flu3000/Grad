@@ -7,7 +7,23 @@
     "import:geo": "tsx --env-file-if-exists=.env importGeo.ts",
     "import:crimes": "tsx --env-file-if-exists=.env importCrimes.ts",
     "typecheck": "tsc --noEmit",
-    "import:postos": "tsx --env-file-if-exists=.env importPostos.ts"
+    "import:postos": "tsx --env-file-if-exists=.env importPostos.ts",
+    "diagnostico": "tsx --env-file-if-exists=.env diagnosticoPlanilhas.ts",
+    "test": "tsx --test test/*.test.ts",
+    "test:banco": "tsx --test test/banco.pglite.ts",
+    "limpar": "tsx --env-file-if-exists=.env limpar.ts",
+    "processar": "tsx --env-file-if-exists=.env processar.ts",
+    "consolidar": "tsx --env-file-if-exists=.env consolidar.ts",
+    "comparar-banco": "tsx --env-file-if-exists=.env compararBanco.ts",
+    "indice-cnefe": "tsx --env-file-if-exists=.env indiceCnefe.ts",
+    "geocodificar": "tsx --env-file-if-exists=.env geocodificar.ts",
+    "comparar-geocodificacao": "tsx --env-file-if-exists=.env compararGeocodificacao.ts",
+    "verificar": "tsx --env-file-if-exists=.env verificar.ts",
+    "gravar": "tsx --env-file-if-exists=.env gravar.ts",
+    "conferir-banco": "tsx --env-file-if-exists=.env conferirBanco.ts",
+    "backup": "tsx --env-file-if-exists=.env backup.ts",
+    "restaurar-backup": "tsx --env-file-if-exists=.env restaurarBackup.ts",
+    "conferir-publico": "tsx conferirPublico.ts"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.119.0",
@@ -18,6 +34,8 @@
     "proj4": "^2.22.0"
   },
   "devDependencies": {
+    "@electric-sql/pglite": "0.5.16",
+    "@electric-sql/pglite-postgis": "0.2.16",
     "@types/geojson": "^7946.0.16",
     "@types/node": "^26.6.6",
     "tsx": "^4.23.15",

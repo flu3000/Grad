@@ -21,3 +21,10 @@ Thumbs.db
 # Planilhas grandes de dados brutos (ficam fora do Git — ver data/README.md)
 *.xlsx
 ~$*
+
+# Dados derivados e bases locais da Fase 3.7 (ficam só no computador — ver data/README.md)
+data/SSP-SP/limpo/
+data/SSP-SP/_antigo/
+data/cnefe/
+*.csv.gz
+scripts/out/
