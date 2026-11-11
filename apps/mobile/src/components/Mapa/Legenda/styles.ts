@@ -58,3 +58,11 @@ export const Bolinha = styled.View<{ $cor: string }>`
   justify-content: center;
   background-color: ${({ $cor }) => $cor};
 `;
+
+/** Nota do filtro (período/hora), da largura da faixa de níveis. */
+export const Nota = styled.Text`
+  max-width: 200px;
+  margin-top: 6px;
+  font-size: 11px;
+  color: ${({ theme }) => theme.colors.textSecondary};
+`;

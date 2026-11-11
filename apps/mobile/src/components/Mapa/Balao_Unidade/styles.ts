@@ -1,10 +1,11 @@
 import styled from 'styled-components/native';
 
-export const Container = styled.View`
+/** $base: espaço embaixo (o painel de hora, quando aberto). */
+export const Container = styled.View<{ $base?: number }>`
   position: absolute;
   left: 12px;
   right: 12px;
-  bottom: 12px;
+  bottom: ${({ $base = 0 }) => 12 + $base}px;
   padding: 14px;
   border-radius: 16px;
   background-color: ${({ theme }) => theme.colors.surface};

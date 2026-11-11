@@ -1,10 +1,11 @@
 import styled from 'styled-components/native';
 
-export const Container = styled.View`
+/** $base: espaço embaixo (o painel de hora, quando aberto). */
+export const Container = styled.View<{ $base?: number }>`
   position: absolute;
   left: 12px;
   right: 12px;
-  bottom: 12px;
+  bottom: ${({ $base = 0 }) => 12 + $base}px;
   max-height: 55%;
   padding: 14px;
   border-radius: 16px;
@@ -70,4 +71,11 @@ export const Erro = styled.TouchableOpacity`
 export const ErroTexto = styled.Text`
   font-size: 13px;
   color: ${({ theme }) => theme.colors.danger};
+`;
+
+export const LinhaFiltro = styled.Text`
+  margin-top: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  color: ${({ theme }) => theme.colors.textPrimary};
 `;

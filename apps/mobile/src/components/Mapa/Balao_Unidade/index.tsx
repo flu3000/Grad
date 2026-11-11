@@ -6,7 +6,7 @@ import { INFO_UNIDADE, abrirRota, type Unidade } from '../../../lib/unidades';
 import * as S from './styles';
 
 /** Balão com os dados de uma unidade de segurança: tipo, endereço, distrito e atalhos para rota e ligação. */
-const Balao_Unidade = ({ unidade, onFechar }: { unidade: Unidade; onFechar: () => void }) => {
+const Balao_Unidade = ({ unidade, onFechar, base = 0 }: { unidade: Unidade; onFechar: () => void; base?: number }) => {
   const theme = useTheme();
   const info = INFO_UNIDADE[unidade.tipo];
   const Icone = info.icone;
@@ -15,7 +15,7 @@ const Balao_Unidade = ({ unidade, onFechar }: { unidade: Unidade; onFechar: () =
     .join(' · ');
 
   return (
-    <S.Container>
+    <S.Container $base={base}>
       <S.Cabecalho>
         <S.Icone $cor={theme.colors.unidades[unidade.tipo]}>
           <Icone color={theme.colors.onUnidade} size={18} />

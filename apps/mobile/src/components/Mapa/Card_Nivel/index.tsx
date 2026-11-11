@@ -1,7 +1,8 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { ActivityIndicator } from 'react-native';
 import { useTheme } from 'styled-components/native';
 import { useLocalAtual } from '../../../contexts/Local_Atual_Context';
+import { nomeDoPeriodo, periodoAtual } from '../../../lib/tempo';
 import { NIVEL_INFO, corDoNivel } from '../../../theme/niveis';
 import * as S from './styles';
 
@@ -9,6 +10,13 @@ import * as S from './styles';
 const Card_Nivel = ({ onPress }: { onPress?: () => void }) => {
   const theme = useTheme();
   const { permissao, info, carregando, erro } = useLocalAtual();
+  // Confere o período a cada minuto (o card pode ficar aberto na virada da tarde para a noite).
+  const [agora, setAgora] = useState(() => periodoAtual());
+  useEffect(() => {
+    const t = setInterval(() => setAgora(periodoAtual()), 60_000);
+    return () => clearInterval(t);
+  }, []);
+  const nivelAgora = info?.niveisPorPeriodo?.[agora] ?? null;
 
   let titulo: string;
   let detalhe: string;
@@ -27,6 +35,7 @@ const Card_Nivel = ({ onPress }: { onPress?: () => void }) => {
   } else {
     titulo = info.nivel ? `Nível ${info.nivel} · ${NIVEL_INFO[info.nivel].rotulo}` : 'Sem dados para este ponto';
     detalhe = `${info.distrito} · Subprefeitura ${info.subprefeitura}`;
+    if (nivelAgora) detalhe = `Agora (${nomeDoPeriodo(agora)}): nível ${nivelAgora} · ${detalhe}`;
   }
 
   return (
