@@ -84,13 +84,19 @@ export interface OpcoesHexagonos {
 
 const MAX_CELULAS = 2000;
 
-// Cache curto por (ano, resolução, região, períodos/horas): voltar para uma região já vista não consulta de novo.
-const CACHE_MAXIMO = 24;
-const cache = new Map<string, Hexagono[]>();
-const chaveCache = (regiao: Region, res: Resolucao, o: OpcoesHexagonos) => {
+// Cache por (ano, resolução, região), limitado às regiões mais recentes para a memória não crescer durante o uso.
+// Uma região guardada com períodos/horas também serve para um filtro mais simples.
+export const CACHE_MAXIMO = 20;
+interface ItemCache {
+  hexagonos: Hexagono[];
+  comPeriodos: boolean;
+  comHoras: boolean;
+}
+const cache = new Map<string, ItemCache>();
+const chaveCache = (regiao: Region, res: Resolucao, ano: number | null) => {
   const l = limitesDaRegiao(regiao);
   const r = (x: number) => x.toFixed(3);
-  return [o.ano ?? 'padrao', res, r(l.min_lng), r(l.min_lat), r(l.max_lng), r(l.max_lat), o.comPeriodos ? 'p' : '', o.comHoras ? 'h' : ''].join('|');
+  return [ano ?? 'padrao', res, r(l.min_lng), r(l.min_lat), r(l.max_lng), r(l.max_lat)].join('|');
 };
 
 export async function buscarHexagonos(
@@ -99,12 +105,12 @@ export async function buscarHexagonos(
   signal?: AbortSignal,
 ): Promise<{ res: Resolucao; hexagonos: Hexagono[] }> {
   const res = resolucaoParaZoom(regiao.latitudeDelta);
-  const chave = chaveCache(regiao, res, opcoes);
+  const chave = chaveCache(regiao, res, opcoes.ano);
   const guardado = cache.get(chave);
-  if (guardado) {
+  if (guardado && (!opcoes.comPeriodos || guardado.comPeriodos) && (!opcoes.comHoras || guardado.comHoras)) {
     cache.delete(chave);
     cache.set(chave, guardado); // mais recente no fim
-    return { res, hexagonos: guardado };
+    return { res, hexagonos: guardado.hexagonos };
   }
   let query = supabase.rpc('hexagons_in_view', {
     ...limitesDaRegiao(regiao),
@@ -126,8 +132,9 @@ export async function buscarHexagonos(
     niveisPorPeriodo: (h.levels_by_period ?? null) as Nivel[] | null,
     niveisPorHora: (h.levels_by_hour ?? null) as Nivel[] | null,
   }));
-  cache.set(chave, hexagonos);
-  if (cache.size > CACHE_MAXIMO) cache.delete(cache.keys().next().value as string);
+  cache.delete(chave);
+  cache.set(chave, { hexagonos, comPeriodos: !!opcoes.comPeriodos, comHoras: !!opcoes.comHoras });
+  while (cache.size > CACHE_MAXIMO) cache.delete(cache.keys().next().value as string);
   return { res, hexagonos };
 }
 

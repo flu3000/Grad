@@ -1,8 +1,9 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { anoPadrao, buscarAnos, type Ano } from '../lib/anos';
+import type { ModoFiltro } from '../lib/filtro';
 import { periodoAtual, type IndicePeriodo } from '../lib/tempo';
 
-export type ModoFiltro = 'dia_inteiro' | 'periodo' | 'hora';
+export type { ModoFiltro };
 
 interface FiltroState {
   /** anos disponíveis (null enquanto carrega) */
@@ -16,9 +17,9 @@ interface FiltroState {
   modo: ModoFiltro;
   setModo: (modo: ModoFiltro) => void;
   periodo: IndicePeriodo;
-  setPeriodo: (p: IndicePeriodo) => void;
+  setPeriodo: React.Dispatch<React.SetStateAction<IndicePeriodo>>;
   hora: number;
-  setHora: (h: number) => void;
+  setHora: React.Dispatch<React.SetStateAction<number>>;
   /** animação de períodos/horas rodando no mapa */
   tocando: boolean;
   setTocando: (t: boolean) => void;

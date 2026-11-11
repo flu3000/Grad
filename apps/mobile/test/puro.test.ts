@@ -22,6 +22,16 @@ import {
   fraseMesmoPeriodo,
   validarRelatorio,
 } from '../src/lib/relatorioDados';
+import {
+  avancar,
+  dadosDoFiltro,
+  fraseNivelDoFiltro,
+  nivelNoFiltro,
+  rotuloAcessivelHora,
+  rotuloAcessivelPeriodo,
+  rotuloFiltro,
+  temDadosDoFiltro,
+} from '../src/lib/filtro';
 import { janelaDaHora, periodoAtual, periodoDaHora, rotuloPeriodo } from '../src/lib/tempo';
 
 describe('tempo', () => {
@@ -176,5 +186,36 @@ describe('relatório (address_report)', () => {
     assert.deepEqual(cats.map((c) => c.chave), ['furto_outros', 'roubo_outros', 'estupro']);
     assert.equal(Math.round(cats[0].pct ?? 0), 77);
     assert.equal(cats[2].pct, null);
+  });
+});
+
+describe('filtro do mapa', () => {
+  const hex = { nivel: 7 as const, niveisPorPeriodo: [8, 9, 10, null] as (1 | 8 | 9 | 10 | null)[], niveisPorHora: null };
+  it('nível no filtro', () => {
+    assert.equal(nivelNoFiltro(hex, { modo: 'dia_inteiro', periodo: 0, hora: 0 }), 7);
+    assert.equal(nivelNoFiltro(hex, { modo: 'periodo', periodo: 1, hora: 0 }), 9);
+    assert.equal(nivelNoFiltro(hex, { modo: 'periodo', periodo: 3, hora: 0 }), 1);
+    assert.equal(nivelNoFiltro(hex, { modo: 'hora', periodo: 0, hora: 19 }), null);
+    assert.equal(temDadosDoFiltro(hex, 'periodo'), true);
+    assert.equal(temDadosDoFiltro(hex, 'hora'), false);
+    assert.deepEqual(dadosDoFiltro('hora'), { comPeriodos: true, comHoras: true });
+  });
+  it('rótulos e acessibilidade', () => {
+    assert.equal(rotuloFiltro({ modo: 'periodo', periodo: 3, hora: 0 }), 'Noite');
+    assert.equal(rotuloFiltro({ modo: 'hora', periodo: 0, hora: 19 }), '18h–21h');
+    assert.equal(rotuloAcessivelPeriodo(3), 'Período: noite, 18h às 24h');
+    assert.equal(rotuloAcessivelHora(19), 'Hora: 19h, registros de 18h às 21h');
+  });
+  it('avanço em loop', () => {
+    assert.equal(avancar({ modo: 'periodo', periodo: 3, hora: 0 }).periodo, 0);
+    assert.equal(avancar({ modo: 'periodo', periodo: 0, hora: 0 }, -1).periodo, 3);
+    assert.equal(avancar({ modo: 'hora', periodo: 0, hora: 23 }).hora, 0);
+    assert.equal(avancar({ modo: 'hora', periodo: 0, hora: 0 }, -1).hora, 23);
+  });
+  it('frase do balão', () => {
+    assert.equal(fraseNivelDoFiltro(9, 7, { modo: 'periodo', periodo: 3, hora: 0 }), 'Noite: nível 9 · Dia inteiro: nível 7');
+    assert.equal(fraseNivelDoFiltro(8, 7, { modo: 'hora', periodo: 0, hora: 19 }), '18h–21h: nível 8 · Dia inteiro: nível 7');
+    assert.equal(fraseNivelDoFiltro(null, 7, { modo: 'hora', periodo: 0, hora: 19 }), '18h–21h: carregando… · Dia inteiro: nível 7');
+    assert.equal(fraseNivelDoFiltro(7, 7, { modo: 'dia_inteiro', periodo: 0, hora: 0 }), null);
   });
 });
