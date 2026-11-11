@@ -36,8 +36,9 @@ sem servidor próprio, projeto na região sa-east-1 (São Paulo), plano gratuito
   só a tela do mapa com a localização do usuário e uma bottom bar vazia; telas de login vazias; camada
   api.ts/TokenStorage.ts/UserService.ts escrita para web/Vite e quebrada no React Native.
 - Supabase (projeto grad, ref snuxiwwvlaryggezcezi): esquema, RLS e funções hexagons_in_view/locate_point
-  (com resolução 7/8/9) em supabase/migrations; distritos, subprefeituras e 17.636 hexágonos de 2025 gravados.
-  Login anônimo e manual linking ligados. Ver docs/SUPABASE.md.
+  (com resolução 7/8/9, ano, períodos e horas) e address_report em supabase/migrations; distritos, subprefeituras,
+  17.636 hexágonos e hex_stats de 2023–2026 gravados (11/11/2026). Login anônimo e manual linking ligados. Ver
+  docs/SUPABASE.md.
 - scripts/ (importGeo.ts, importCrimes.ts): ingestão local com a chave secreta em scripts/.env; ver scripts/README.md.
 - Dados: data/geosampa (96 distritos, 32 subprefeituras), data/rio (não usado), data/SSP-SP/*.xlsx (FORA do Git;
   só existe no computador do dono). Ver data/README.md.
@@ -86,9 +87,20 @@ Fase 3 — App (itens 1 a 5 feitos em 10/11/2026; e-mail/senha removido; item 6 
 6. Login Google (@react-native-google-signin/google-signin) e Apple (expo-apple-authentication) com
    signInWithIdToken e linkIdentity para converter convidados; configurar development build (EAS).
 
+Fase 3.7 — Anos, períodos, horários e relatório por endereço (dados concluídos em 11/11/2026; app pendente)
+1. Feito (branch fase-3.7-endereco-horario): pipeline limpar → geocodificar (CNEFE local) → processar → consolidar →
+   verificar → gravar → conferir; 2023–2026 por período, hora e mês em hex_stats; escala fixa (2023–2025); datasets,
+   level_breaks, event_venues e address_report no Supabase; hex_cells espelha 2025. Ver scripts/README.md e
+   docs/SUPABASE.md.
+2. Pendente: números oficiais da SSP em data/SSP-SP/oficial/ (o dono baixa; rodar npm run data:verificar e mostrar a
+   seção 2 com as diferenças acima de 5%).
+3. Etapa 6 (app), em branch nova a partir da main depois do merge: seletor de ano e de período/hora no mapa
+   (hexagons_in_view com p_year/with_periods/with_hours), relatório por endereço (address_report: avisos de evento,
+   "<3" para crimes sexuais) e a tela "Como ler estes dados" com a frase de datasets.hidden_location.
+
 Fase 4 — Qualidade e entrega
-1. ESLint + Prettier; testes (Jest no app; testes SQL/pgTAP ou scripts de verificação para as funções).
-2. GitHub Actions: typecheck + testes a cada push.
+1. ESLint + Prettier; testes (Jest no app). As funções do banco já têm o npm run test:banco (PGlite + PostGIS).
+2. GitHub Actions: typecheck + npm test + npm run test:banco a cada push.
 3. EAS Build Android com chave do Google Maps em app.json; CAPTCHA/Turnstile no login anônimo antes de
    lançar; documentar o deploy no README.
 

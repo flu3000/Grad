@@ -10,7 +10,8 @@ Fontes brutas usadas pelos scripts de `scripts/` para alimentar o Supabase.
 | `SSP-SP/` | Planilhas anuais de BOs da SSP-SP (`SPDadosCriminais_AAAA.xlsx`, 130–210 MB cada). Lidas por `npm run data:limpar`. | **Não** |
 | `SSP-SP/limpo/` | Partes limpas (`<ano>/<arquivo>__<aba>__parte_0001.csv.gz`, 100 mil linhas) + `manifesto.json`. Geradas pela limpeza; têm endereços. | **Não** |
 | `SSP-SP/_antigo/` | Arquivos substituídos (ex.: a planilha reduzida de 2025 no formato antigo). O pipeline ignora pastas que começam com `_`. | **Não** |
-| `cnefe/` | (Etapa 2) CNEFE 2022 do IBGE para geocodificação local. | **Não** |
+| `SSP-SP/oficial/` | Estatística oficial mensal da SSP (capital, por natureza), um arquivo por ano com o ano no nome (`ocorrencias_capital_2025.xlsx` ou `.csv`). Baixado pelo dono; comparado na seção 2 do `npm run data:verificar`. | **Não** |
+| `cnefe/` | CNEFE 2022 do IBGE de São Paulo (`3550308_SAO_PAULO.zip`, baixado do site do IBGE) e o índice de endereços gerado por `npm run data:indice-cnefe` (`indice.json.gz`). Só para a geocodificação local: nenhum endereço de BO sai do computador. | **Não** |
 
 ## GeoSampa
 
@@ -53,5 +54,11 @@ Arquivos em uso (formato novo, os 4 anos iguais): 2023, 2024, 2025 e 2026 (regis
 - **2025**: o primeiro arquivo (reduzido, formato antigo, sem `NUM_BO` nem `COD IBGE`) foi trocado pelo completo
   em 10/11/2026 e está em `_antigo/2025/`. Os dois batem em linhas, meses e categorias; o novo tem o sigilo aplicado a
   mais 4.864 BOs (principalmente furto e furto de veículo), que tinham coordenada no antigo.
+
+- **Sigilo** (linhas da capital sem localização divulgada): 7,6% (2023), 7,8% (2024), 8,3% (2025) e 7,8% (2026); 100% dos
+  estupros, ~1/3 dos homicídios dolosos e ~42% das lesões dolosas. Esses BOs não entram no mapa (exceto os estupros
+  distribuídos pelo distrito); a frase fixa do app vem de `datasets.hidden_location`.
+- **Precisão das coordenadas**: comparando com o endereço geocodificado, ~21% dos pontos confiáveis da SSP ficam a mais
+  de 300 m do endereço em 2023–2025 e 26% em 2026 (limitação da fonte; ver `docs/DIAGNOSTICO.md`).
 
 Detalhes do processamento em [`scripts/README.md`](../scripts/README.md).

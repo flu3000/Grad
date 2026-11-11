@@ -240,3 +240,27 @@ funcionando no app.
   mais que muitos furtos), e o nível mais alto sempre vai "até o máximo" (cauda longa).
 - Rótulos: Poucos registros, Muito baixo, Baixo, Médio-baixo, Médio, Médio-alto, Alto, Muito alto, Grave, Crítico.
 - Perfil: "Cor dos hexágonos" com as opções "Suave" e "Normal".
+
+## Atualização — 11/11/2026 (Fase 3.7: anos, períodos, horários e endereços — parte de dados)
+
+- **Banco:** migration `20261111140549_anos_periodos_horarios_e_enderecos` aplicada; `hex_stats` (60.607 linhas,
+  2023–2026, por período, hora e mês), `datasets`, `level_breaks`, `event_venues` e a função `address_report`. Banco com
+  132 MB. Conferido com `data:conferir-banco` (26/26) e com a chave publicável (`data:conferir-publico`, 13/13, escrita
+  negada com `42501`). Backup de `hex_cells` e rollback testado em `supabase/rollback/`.
+- **O que mudou no app atual (sem mexer no código):** `hex_cells` passou a espelhar **2025 na escala fixa** (cortes de
+  2023–2025 juntos, com geocodificação, deduplicação e pontos padrão). Contra o banco anterior: res 7 — 56 hexágonos
+  desceram 1 nível e 4 subiram; res 8 — 309 desceram e 10 subiram; res 9 — 1.901 desceram e 219 subiram (os demais
+  ficaram iguais). O hexágono do ponto padrão de Perus foi de 8 para 3. O `counts` do balão também mudou (mais BOs
+  preenchidos pelo endereço, um BO por categoria mais grave).
+- **Limitação conhecida — precisão das coordenadas da SSP:** comparando o ponto da SSP com o endereço geocodificado,
+  ~21% dos pontos confiáveis ficam a mais de 300 m do endereço em 2023–2025 e **26% em 2026**. As coordenadas de 2026
+  são menos precisas: há ~2 mil hexágonos res 9 a mais com só 1–2 BOs do que nos outros anos (5.887 contra ~3.900),
+  mesmo com menos meses. Aceito como limitação da fonte; o mapa usa o ponto da SSP quando ele não é suspeito.
+- **Sigilo:** 7,6% a 8,3% das linhas por ano sem localização (estável, sem aviso por ano). Frase fixa no relatório e na
+  tela "Como ler estes dados", calculada dos dados (`datasets.hidden_location`).
+- **Locais de evento:** aviso no relatório só com ≥ 15% dos BOs do local em dias de pico no ano consultado; Paulista,
+  Centro e Barra Funda são "grandes eventos de rua".
+- **Pendente:** números oficiais da SSP (o dono vai baixar para `data/SSP-SP/oficial/`; seção 2 do `data:verificar`) e o
+  app (Etapa 6, em outra branch).
+- **Memória:** o `data:verificar` com 8 processos chegou a ser encerrado por falta de memória; usar `--workers=4` e uma
+  tarefa pesada por vez.
