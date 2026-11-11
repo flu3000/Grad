@@ -2,7 +2,7 @@
  * Pipeline completo dos BOs da SSP-SP: A (limpeza) → B (processamento) → C (consolidação).
  *
  *   npm run data:import-crimes             → roda os 3 estágios (pula o que está em cache) e mostra a linha de base
- *   npm run data:import-crimes -- --gravar → grava no Supabase (tabelas da Fase 3.7; disponível na Etapa 5)
+ *   npm run data:import-crimes -- --gravar → não grava: a gravação é o npm run data:gravar (depois do data:verificar)
  *
  * Os estágios também rodam separados: data:limpar, data:processar e data:consolidar.
  */
@@ -23,7 +23,7 @@ async function main() {
   imprimirConsolidacao(c, proc);
   if (c.invariantes.some((i) => !i.ok)) throw new Error('Há invariantes falhando: nada será gravado.');
   if (arg('gravar') === 'true')
-    throw new Error('A gravação nas tabelas novas (hex_stats, datasets, level_breaks) entra na Etapa 5, depois da migration aprovada.');
+    throw new Error('A gravação é separada: rode npm run data:verificar e depois npm run data:gravar (simula; -- --gravar grava).');
   console.log('\nNada foi gravado.');
 }
 
