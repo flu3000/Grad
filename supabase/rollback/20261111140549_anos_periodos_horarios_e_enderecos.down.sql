@@ -93,4 +93,4 @@ grant execute on function public.security_units_in_view(double precision, double
 
 commit;
 
--- delete from supabase_migrations.schema_migrations where version = '20261111120000';
+-- delete from supabase_migrations.schema_migrations where version = '20261111140549';

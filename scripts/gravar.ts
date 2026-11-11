@@ -6,7 +6,7 @@
  *   npm run data:gravar -- --gravar   → grava (upsert em lotes). Só com autorização do dono.
  *
  * Nunca apaga nada: linhas do banco que não existem mais na saída local só são listadas.
- * Exige a migration 20261111120000_anos_periodos_horarios_e_enderecos aplicada e um `npm run data:verificar`
+ * Exige a migration 20261111140549_anos_periodos_horarios_e_enderecos aplicada e um `npm run data:verificar`
  * sem falhas, posterior à consolidação. Depois de gravar: `npm run data:conferir-banco`.
  */
 import fs from 'fs';
