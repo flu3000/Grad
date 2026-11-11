@@ -233,3 +233,22 @@ test('permissões: cliente só lê; funções de gravação só para service_rol
     }
   }
 });
+
+test('rollback: remove o que a migration criou e devolve as 3 funções antigas', async () => {
+  const pasta = path.join(__dirname, '../../supabase/rollback');
+  for (const f of fs.readdirSync(pasta).filter((f) => f.endsWith('.down.sql')).sort().reverse()) await db.exec(fs.readFileSync(path.join(pasta, f), 'utf-8'));
+  const tabelas = (await db.query<{ t: string }>(`select tablename t from pg_tables where schemaname = 'public' order by 1`)).rows.map((r) => r.t);
+  assert.deepEqual(tabelas, ['districts', 'hex_cells', 'security_units', 'subprefectures']);
+  const funcoes = (await db.query<{ f: string }>(`select p.proname || '(' || pg_get_function_identity_arguments(p.oid) || ')' f from pg_proc p join pg_namespace n on n.oid = p.pronamespace where n.nspname = 'public' and p.prokind = 'f' and p.proname <> 'fix_invalid_geometry' order by 1`)).rows.map((r) => r.f);
+  assert.deepEqual(funcoes, [
+    'hexagons_in_view(min_lng double precision, min_lat double precision, max_lng double precision, max_lat double precision, res integer, max_cells integer)',
+    'locate_point(lat double precision, lng double precision, res integer)',
+    'security_units_in_view(min_lng double precision, min_lat double precision, max_lng double precision, max_lat double precision, max_units integer)',
+  ]);
+  const h = await rpc<Record<string, unknown>>(`select * from public.hexagons_in_view($1, $2, $3, $4, 9, 2000)`, CAIXA);
+  assert.deepEqual(Object.keys(h[0]), ['h3_index', 'level', 'score', 'geometry']);
+  const [l] = await rpc<Record<string, unknown>>(`select * from public.locate_point($1, $2, 9)`, [CENTRO.lat, CENTRO.lng]);
+  assert.equal(Object.keys(l).length, 8);
+  const [{ c }] = await rpc<{ c: number }>(`select count(*)::int c from information_schema.columns where table_name = 'hex_cells' and column_name = 'area_km2'`);
+  assert.equal(c, 0);
+});

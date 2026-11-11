@@ -20,7 +20,9 @@
     "comparar-geocodificacao": "tsx --env-file-if-exists=.env compararGeocodificacao.ts",
     "verificar": "tsx --env-file-if-exists=.env verificar.ts",
     "gravar": "tsx --env-file-if-exists=.env gravar.ts",
-    "conferir-banco": "tsx --env-file-if-exists=.env conferirBanco.ts"
+    "conferir-banco": "tsx --env-file-if-exists=.env conferirBanco.ts",
+    "backup": "tsx --env-file-if-exists=.env backup.ts",
+    "restaurar-backup": "tsx --env-file-if-exists=.env restaurarBackup.ts"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.119.0",
