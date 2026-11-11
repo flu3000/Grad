@@ -1,6 +1,7 @@
 /**
  * Compara 2025 da linha de base com o que está hoje no banco (hex_cells), decompondo a diferença em passos:
- * regras antigas no arquivo novo → deduplicação → categoria mais grave → Tema 506 → ponto de Perus → escala fixa.
+ * regras antigas no arquivo novo → deduplicação → categoria mais grave → Tema 506 → pontos padrão → escala fixa →
+ * geocodificação pelo CNEFE (resultado final).
  * Só LÊ o Supabase (select em hex_cells); não grava nada.
  *
  *   npm run data:comparar-banco          → scripts/out/comparacao_banco_2025.json + resumo
@@ -11,7 +12,7 @@ import { adminClient } from './src/lib/supabase';
 import { outDir } from './src/lib/paths';
 import { RESOLUTIONS } from './src/lib/scoring';
 import { consolidar, type Escala } from './src/pipeline/consolidacao';
-import { processarTudo, REGRAS_PADRAO, type Regras } from './src/pipeline/processamento';
+import { processarTudo, REGRAS_PADRAO, REGRAS_SEM_GEOCODIFICACAO, type Regras } from './src/pipeline/processamento';
 
 const ANO = 2025;
 
@@ -22,14 +23,15 @@ interface Passo {
   escala: Escala;
 }
 
-const base = { anos: REGRAS_PADRAO.anos, geocodificacao: null };
+const base = { anos: REGRAS_SEM_GEOCODIFICACAO.anos, geocodificacao: null };
 const PASSOS: Passo[] = [
   { nome: 'v0_regras_antigas', motivo: 'arquivo novo de 2025 com as regras antigas (todas as linhas, escala só de 2025)', regras: { ...base, deduplicar: 'nenhuma', tema506: false, pontosPadrao: false }, escala: 'por_ano' },
   { nome: 'v1_deduplicacao', motivo: 'deduplicação (mesmo BO e mesma categoria contam uma vez)', regras: { ...base, deduplicar: 'bo_categoria', tema506: false, pontosPadrao: false }, escala: 'por_ano' },
   { nome: 'v2_categoria_mais_grave', motivo: 'BO conta uma vez, na categoria mais grave', regras: { ...base, deduplicar: 'bo', tema506: false, pontosPadrao: false }, escala: 'por_ano' },
   { nome: 'v3_tema_506', motivo: 'Tema 506 do STF → não criminal', regras: { ...base, deduplicar: 'bo', tema506: true, pontosPadrao: false }, escala: 'por_ano' },
-  { nome: 'v4_ponto_de_perus', motivo: 'pontos padrão confirmados (Perus e Liberdade) → sem localização', regras: REGRAS_PADRAO, escala: 'por_ano' },
-  { nome: 'v5_escala_fixa', motivo: 'escala fixa (cortes de 2023–2025 juntos) = linha de base', regras: REGRAS_PADRAO, escala: 'fixa' },
+  { nome: 'v4_ponto_de_perus', motivo: 'pontos padrão confirmados (Perus e Liberdade) → sem localização', regras: REGRAS_SEM_GEOCODIFICACAO, escala: 'por_ano' },
+  { nome: 'v5_escala_fixa', motivo: 'escala fixa (cortes de 2023–2025 juntos) = linha de base', regras: REGRAS_SEM_GEOCODIFICACAO, escala: 'fixa' },
+  { nome: 'v6_geocodificacao', motivo: 'geocodificação pelo CNEFE (preenche sem coordenada / ponto padrão) = resultado final', regras: REGRAS_PADRAO, escala: 'fixa' },
 ];
 
 async function lerBanco(): Promise<Map<string, { level: number; total: number }>> {
@@ -115,7 +117,7 @@ async function main() {
     }),
   );
   console.log(`Banco → linha de base, total que mudou de nível: ${RESOLUTIONS.map((r) => `res ${r}: ${total[r]}`).join(' | ')}`);
-  console.log('\n20 hexágonos (res 8) que mais mudaram (trilha: banco → v0 … v5):');
+  console.log('\n20 hexágonos (res 8) que mais mudaram (trilha: banco → v0 … v6):');
   for (const t of top) console.log(`  ${t.h3}  ${t.nivelBanco} → ${t.nivelNovo}  [${t.trilha}]  BOs ${t.boBanco} → ${t.boNovo}  | ${t.motivoPrincipal}`);
   console.log(`\nRelatório: ${path.join(outDir, 'comparacao_banco_2025.json')}`);
 }

@@ -1,8 +1,17 @@
 /**
- * Locais de grandes eventos (shows, jogos, feiras, desfiles): nos dias de evento o número de BOs dispara e não
- * representa o perigo do dia a dia. Lista curada; centro aproximado do local e raio em metros. Por enquanto só
- * entra no relatório da geocodificação (dias com BOs muito acima da mediana do ponto); o tratamento no mapa é
- * uma decisão pendente.
+ * Locais de grandes eventos (shows, jogos, feiras, desfiles, Carnaval de rua): nos dias de evento o número de BOs
+ * dispara. Os registros continuam no mapa e na nota (são reais); o relatório do endereço só avisa quando a área
+ * de 500 m inclui um destes locais ("X% dos registros deste local aconteceram em Y dias de evento em 2025").
+ * A tabela `event_venues` (por local e ano) sai da consolidação (`npm run data:consolidar`).
+ *
+ * Centro e raio revisados em 11/11/2026 pelos picos diários dos BOs (hexágonos res 9 com dias muito acima da média):
+ *   - corrigidos: Interlagos e Morumbis (centro), Canindé (centro e raio 300 m), Anhembi (centro no Sambódromo,
+ *     raio 500 m; o Carnaval no Sambódromo não forma pico, os picos são de outros eventos), Paulista (raio 500 m),
+ *     Memorial (centro);
+ *   - novos: Centro (República/Anhangabaú: Carnaval de rua e Virada Cultural) e Barra Funda (blocos de Carnaval);
+ *   - retirados (sem pico ou quase nenhum): Pacaembu, São Paulo Expo, Villa-Lobos, Jockey Club,
+ *     Transamerica Expo / Vibra São Paulo, Espaço das Américas e Memorial da América Latina (com os BOs do Terminal
+ *     Barra Funda, que fica no raio, a mediana diária sobe e os picos somem).
  */
 export interface LocalDeEvento {
   nome: string;
@@ -11,20 +20,25 @@ export interface LocalDeEvento {
   raioM: number;
 }
 
+/**
+ * Dia de pico: dia com BOs no raio ≥ max(`minimo`, `vezesMediana` × mediana diária do local no ano). A mediana é
+ * de todos os dias do ano com dados (dias sem BO contam como zero).
+ */
+export const DIA_DE_PICO = { minimo: 10, vezesMediana: 5 };
+
+/** Um local só fica na lista com pelo menos `minDias` dias de pico e `minPct`% dos BOs nesses dias (2023–2026). */
+export const MANTER_LOCAL = { minDias: 3, minPct: 5 };
+
 export const LOCAIS_DE_EVENTO: LocalDeEvento[] = [
-  { nome: 'Autódromo de Interlagos', lat: -23.7016, lng: -46.697, raioM: 700 },
-  { nome: 'Estádio do Morumbis', lat: -23.6003, lng: -46.7203, raioM: 300 },
-  { nome: 'Neo Química Arena', lat: -23.5453, lng: -46.4741, raioM: 300 },
+  { nome: 'Autódromo de Interlagos', lat: -23.7035, lng: -46.6985, raioM: 700 },
+  { nome: 'Estádio do Morumbis', lat: -23.5997, lng: -46.7192, raioM: 300 },
+  { nome: 'Neo Química Arena', lat: -23.546, lng: -46.4735, raioM: 300 },
   { nome: 'Allianz Parque', lat: -23.5275, lng: -46.6785, raioM: 250 },
-  { nome: 'Estádio do Pacaembu', lat: -23.5476, lng: -46.6651, raioM: 250 },
-  { nome: 'Anhembi / Sambódromo', lat: -23.516, lng: -46.637, raioM: 500 },
-  { nome: 'Memorial da América Latina / Espaço das Américas', lat: -23.527, lng: -46.6668, raioM: 300 },
+  { nome: 'Estádio do Canindé', lat: -23.524, lng: -46.6195, raioM: 300 },
+  { nome: 'Anhembi / Sambódromo', lat: -23.516, lng: -46.643, raioM: 500 },
   { nome: 'Parque Ibirapuera', lat: -23.5874, lng: -46.6576, raioM: 800 },
   { nome: 'Expo Center Norte', lat: -23.5125, lng: -46.6135, raioM: 300 },
-  { nome: 'São Paulo Expo', lat: -23.6478, lng: -46.6207, raioM: 300 },
-  { nome: 'Parque Villa-Lobos', lat: -23.5466, lng: -46.724, raioM: 500 },
-  { nome: 'Estádio do Canindé', lat: -23.5225, lng: -46.6205, raioM: 250 },
-  { nome: 'Jockey Club de São Paulo', lat: -23.586, lng: -46.6985, raioM: 400 },
-  { nome: 'Transamerica Expo / Vibra São Paulo', lat: -23.6508, lng: -46.7206, raioM: 350 },
-  { nome: 'Avenida Paulista (MASP)', lat: -23.5614, lng: -46.6559, raioM: 400 },
+  { nome: 'Avenida Paulista', lat: -23.56, lng: -46.658, raioM: 500 },
+  { nome: 'Centro (República / Anhangabaú)', lat: -23.5445, lng: -46.6415, raioM: 400 },
+  { nome: 'Barra Funda (blocos de Carnaval)', lat: -23.522, lng: -46.661, raioM: 300 },
 ];

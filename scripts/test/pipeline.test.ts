@@ -3,7 +3,7 @@ import { test } from 'node:test';
 import { mapearCabecalho } from '../src/lib/colunas';
 import { idBo, lerLinhaCsv, limparLinha, linhaCsv, type LinhaLimpa } from '../src/lib/limpeza';
 import { densidadesPorHora, densidadesPorPeriodo, fatorAnual, somar, somaDosMeses, type Agregado } from '../src/lib/agregacao';
-import { processarLinhas, REGRAS_PADRAO } from '../src/pipeline/processamento';
+import { locaisDoPonto, processarLinhas, REGRAS_SEM_GEOCODIFICACAO } from '../src/pipeline/processamento';
 import { cobertura, curvaDeAtraso, somarParciais } from '../src/pipeline/consolidacao';
 import { latLngToCell } from 'h3-js';
 
@@ -96,7 +96,7 @@ test('processamento: hora exata entra na hora e no período; só período não �
       { ...base, linha: 2, hora: null, periodo: 'manha' },
       { ...base, linha: 3, hora: null, periodo: 'incerta' },
     ],
-    REGRAS_PADRAO,
+    REGRAS_SEM_GEOCODIFICACAO,
     ctx,
   );
   const c = r.agregado.get(k8())!;
@@ -119,7 +119,7 @@ test('processamento: hora vale mais que DESC_PERIODO; excluídas, fora dos anos 
       { ...base, linha: 4, lat: -23.405645, lng: -46.734928 }, // Perus
       { ...base, linha: 5, rubrica: 'Ilícito extrapenal (Tema 506 STF)', natureza: 'PORTE DE ENTORPECENTES' },
     ],
-    REGRAS_PADRAO,
+    REGRAS_SEM_GEOCODIFICACAO,
     { ...ctx, excluir: new Set([2]) },
   );
   const c = r.agregado.get(k8())!;
@@ -134,7 +134,7 @@ test('processamento: hora vale mais que DESC_PERIODO; excluídas, fora dos anos 
 test('processamento: estupro sem coordenada em local público vai para o distrito', () => {
   const r = processarLinhas(
     [{ ...base, linha: 1, lat: null, lng: null, sigilo: true, rubrica: 'Estupro', natureza: 'ESTUPRO', bairro: 'Sé', tipo_local: 'Via Pública' }],
-    REGRAS_PADRAO,
+    REGRAS_SEM_GEOCODIFICACAO,
     ctx,
   );
   assert.equal(r.cidade[2025].distribuidos, 1);
@@ -154,9 +154,9 @@ test('paralelo = sequencial: a soma das partes é igual ao processamento do todo
     rubrica: i % 4 ? 'Furto (art. 155)' : 'Roubo (art. 157)',
     natureza: i % 4 ? 'FURTO - OUTROS' : 'ROUBO - OUTROS',
   }));
-  const todo = processarLinhas(linhas, REGRAS_PADRAO, ctx);
+  const todo = processarLinhas(linhas, REGRAS_SEM_GEOCODIFICACAO, ctx);
   const partes = [linhas.slice(0, 13), linhas.slice(13, 27), linhas.slice(27)].map((p) => {
-    const r = processarLinhas(p, REGRAS_PADRAO, ctx);
+    const r = processarLinhas(p, REGRAS_SEM_GEOCODIFICACAO, ctx);
     return { agregado: Object.fromEntries(r.agregado), cidade: r.cidade, global: r.global };
   });
   const soma = somarParciais(partes);
@@ -241,4 +241,11 @@ test('geocodificação: decisão por nível e origem do distrito; nunca sigilo n
   assert.equal(sp.pontoPadrao, true);
   assert.equal(decidir(padrao, 'furto_outros', sp, GEOCODIFICACAO, geo('exato', 'bairro'), distritoDe).origem, 'preenchido');
   assert.equal(decidir(padrao, 'furto_outros', sp, GEOCODIFICACAO, () => ({ ok: false, falha: 'ambiguo' as const, dica: 'bairro' as const }), distritoDe).origem, 'sem');
+});
+
+test('locais de evento: ponto dentro e fora do raio', () => {
+  assert.deepEqual(locaisDoPonto(-23.5275, -46.6785), ['Allianz Parque']); // centro do Allianz
+  assert.deepEqual(locaisDoPonto(-23.5275 + 0.0018, -46.6785), ['Allianz Parque']); // ~200 m ao norte (raio 250 m)
+  assert.deepEqual(locaisDoPonto(-23.5275 + 0.0036, -46.6785), []); // ~400 m: fora
+  assert.deepEqual(locaisDoPonto(-23.65, -46.55), []);
 });

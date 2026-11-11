@@ -14,7 +14,7 @@ import { imprimirConsolidacao } from './consolidar';
 import { outDir } from './src/lib/paths';
 import { RESOLUTIONS } from './src/lib/scoring';
 import { consolidar, gradeDoMunicipio, type Anualizacao, type ResultadoConsolidacao } from './src/pipeline/consolidacao';
-import { processarTudo, REGRAS_COM_GEOCODIFICACAO, REGRAS_PADRAO, type Regras, type ResultadoProcessamento } from './src/pipeline/processamento';
+import { processarTudo, REGRAS_PADRAO, REGRAS_SEM_GEOCODIFICACAO, type Regras, type ResultadoProcessamento } from './src/pipeline/processamento';
 
 interface Hex {
   level: number;
@@ -25,9 +25,9 @@ interface Hex {
 type Mapa = Map<string, Hex>; // "res|h3|ano"
 
 const PASSOS: { nome: string; motivo: string; regras: Regras; anualizacao: Anualizacao; gravar: boolean }[] = [
-  { nome: 'v1_ponto_liberdade', motivo: 'ponto padrão da Liberdade (-23,555771 / -46,639557) → sem localização', regras: REGRAS_PADRAO, anualizacao: 'linear', gravar: false },
-  { nome: 'v2_anualizacao_sazonal', motivo: '2026 anualizado pela fração sazonal jan–ago em vez de 12/8', regras: REGRAS_PADRAO, anualizacao: 'sazonal', gravar: false },
-  { nome: 'geocodificado', motivo: 'geocodificação pelo CNEFE (preenche sem coordenada / ponto padrão; troca ponto suspeito)', regras: REGRAS_COM_GEOCODIFICACAO, anualizacao: 'sazonal', gravar: true },
+  { nome: 'v1_ponto_liberdade', motivo: 'ponto padrão da Liberdade (-23,555771 / -46,639557) → sem localização', regras: REGRAS_SEM_GEOCODIFICACAO, anualizacao: 'linear', gravar: false },
+  { nome: 'v2_anualizacao_sazonal', motivo: '2026 anualizado pela fração sazonal jan–ago em vez de 12/8', regras: REGRAS_SEM_GEOCODIFICACAO, anualizacao: 'sazonal', gravar: false },
+  { nome: 'geocodificado', motivo: 'geocodificação pelo CNEFE (preenche sem coordenada / ponto padrão; troca ponto suspeito)', regras: REGRAS_PADRAO, anualizacao: 'sazonal', gravar: true },
 ];
 
 function lerBase(): Mapa {
@@ -63,7 +63,7 @@ async function main() {
     if (p.gravar) final = { c, proc };
   }
   const grade = gradeDoMunicipio();
-  const anos = REGRAS_PADRAO.anos;
+  const anos = REGRAS_SEM_GEOCODIFICACAO.anos;
   const nivel = (m: Mapa, k: string) => m.get(k)?.level ?? 1;
   const chaves = (res: number, ano: number) => [...grade.get(res)!].map((h) => `${res}|${h}|${ano}`);
 

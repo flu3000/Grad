@@ -13,8 +13,10 @@ import zlib from 'zlib';
 import { polygonToCellsExperimental, POLYGON_TO_CELLS_FLAGS } from 'h3-js';
 import { CRIME_RULES, CRIME_WEIGHTS, DISTRIBUIR_SEM_LOCALIZACAO, maisGrave, normalizeText, type CrimeCategory } from '../config/crimeWeights';
 import { GEOCODIFICACAO } from '../config/geocodificacao';
+import { LOCAIS_DE_EVENTO } from '../config/locaisDeEvento';
 import { naoGeocodificar } from '../config/naoGeocodificar';
 import { somarDistribuido, somarPonto, type Agregado, type Celula } from '../lib/agregacao';
+import { distanciaM } from '../lib/endereco';
 import { readGeoSampa } from '../lib/city';
 import { periodoDaHora, type Periodo, PERIODOS } from '../lib/horario';
 import { COLUNAS_LIMPAS, dividirCsv, lerLinhaCsv, type LinhaLimpa } from '../lib/limpeza';
@@ -28,19 +30,21 @@ import type { Consulta, Resultado } from '../lib/geocodificador';
 import { lerManifesto, partesDoManifesto, pastaLimpo, type Parte } from './extracao';
 import { chaveConsulta, decidir, hashDosCandidatos, lerCandidatos, situacaoDoPonto, type RegrasGeocodificacao } from './geocodificacao';
 
-/** Regras do processamento. A linha de base usa REGRAS_PADRAO; as outras servem para medir o efeito de cada mudança. */
+/** Regras do processamento. O resultado final usa REGRAS_PADRAO; as outras servem para medir o efeito de cada mudança. */
 export interface Regras {
   anos: number[];
   /** 'bo' = uma vez por BO, na categoria mais grave; 'bo_categoria' = uma vez por BO e categoria (regra antiga); 'nenhuma'. */
   deduplicar: 'bo' | 'bo_categoria' | 'nenhuma';
   tema506: boolean;
   pontosPadrao: boolean;
-  /** null = só as coordenadas da SSP (linha de base); senão, preenche e troca pelo endereço (Etapa 2). */
+  /** null = só as coordenadas da SSP (linha de base da Etapa 1); senão, preenche e troca pelo endereço (Etapa 2). */
   geocodificacao: RegrasGeocodificacao | null;
 }
 
-export const REGRAS_PADRAO: Regras = { anos: [2023, 2024, 2025, 2026], deduplicar: 'bo', tema506: true, pontosPadrao: true, geocodificacao: null };
-export const REGRAS_COM_GEOCODIFICACAO: Regras = { ...REGRAS_PADRAO, geocodificacao: GEOCODIFICACAO };
+/** Regras finais (aprovadas): BO uma vez na categoria mais grave, Tema 506, pontos padrão e geocodificação pelo CNEFE. */
+export const REGRAS_PADRAO: Regras = { anos: [2023, 2024, 2025, 2026], deduplicar: 'bo', tema506: true, pontosPadrao: true, geocodificacao: GEOCODIFICACAO };
+/** Só as coordenadas da SSP (linha de base da Etapa 1, para medir o efeito da geocodificação). */
+export const REGRAS_SEM_GEOCODIFICACAO: Regras = { ...REGRAS_PADRAO, geocodificacao: null };
 
 /** Classificação com a opção de desligar a regra do Tema 506 (só para medir o efeito dela). */
 export function classificar(rubrica: string | null, natureza: string | null, regras: Pick<Regras, 'tema506'>): CrimeCategory {
@@ -69,6 +73,10 @@ export interface CidadeAno {
   /** Mês da ocorrência "AAAA-MM" → atraso em meses até o registro → BOs (todos os BOs da capital no ano). */
   atraso: Record<string, Record<string, number>>;
   geo: EstatisticasGeo;
+  /** Linhas com marca de sigilo da SSP, por categoria (todas as linhas do ano, com ou sem ponto). */
+  sigiloPorCategoria: Partial<Record<CrimeCategory, number>>;
+  /** Local de evento → dia ("AAAA-MM-DD") → BOs com ponto final no raio do local. */
+  eventos: Record<string, Record<string, number>>;
 }
 
 /** Contagens da geocodificação (todas as linhas do ano, depois da deduplicação). */
@@ -117,6 +125,8 @@ const novaCidade = (): CidadeAno => ({
   pontosPorPeriodo: [0, 0, 0, 0],
   atraso: {},
   geo: novaGeo(),
+  sigiloPorCategoria: {},
+  eventos: {},
 });
 
 export interface Global {
@@ -245,6 +255,17 @@ export function hexagonosDosDistritos(): Map<string, Map<number, string[]>> {
   return mapa;
 }
 
+/** Locais de evento com a caixa em graus (filtro rápido antes da distância). */
+const CAIXAS_DE_EVENTO = LOCAIS_DE_EVENTO.map((v) => ({ ...v, dLat: v.raioM / 111_000, dLng: v.raioM / (111_000 * Math.cos((v.lat * Math.PI) / 180)) }));
+
+/** Locais de evento cujo raio contém o ponto. */
+export function locaisDoPonto(lat: number, lng: number): string[] {
+  const out: string[] = [];
+  for (const v of CAIXAS_DE_EVENTO)
+    if (Math.abs(lat - v.lat) <= v.dLat && Math.abs(lng - v.lng) <= v.dLng && distanciaM(lat, lng, v.lat, v.lng) <= v.raioM) out.push(v.nome);
+  return out;
+}
+
 const mesesEntre = (de: string, ate: string) => (Number(ate.slice(0, 4)) - Number(de.slice(0, 4))) * 12 + Number(ate.slice(5, 7)) - Number(de.slice(5, 7));
 
 /** Processa as linhas de uma parte (função pura sobre os dados; usada pelo filho e pelo teste sequencial). */
@@ -283,6 +304,7 @@ export function processarLinhas(
     c.linhas++;
     const categoria = classificar(l.rubrica, l.natureza, regras);
     inc(c.porCategoria, categoria);
+    if (l.sigilo) inc(c.sigiloPorCategoria, categoria);
     if (l.data_registro) {
       const atraso = Math.min(36, Math.max(0, mesesEntre(l.data_ocorrencia, l.data_registro)));
       inc((c.atraso[l.data_ocorrencia.slice(0, 7)] ??= {}), String(atraso));
@@ -321,6 +343,7 @@ export function processarLinhas(
       else if (periodo) c.horario.soPeriodo++;
       else c.horario.nenhum++;
       if (periodo) c.pontosPorPeriodo[PERIODOS.indexOf(periodo)]++;
+      for (const v of locaisDoPonto(dec.lat, dec.lng)) inc((c.eventos[v] ??= {}), l.data_ocorrencia);
       continue;
     }
     // Sem ponto: estupro (DISTRIBUIR_SEM_LOCALIZACAO) da capital, em local público e com BAIRRO = distrito → distrito.
@@ -390,6 +413,7 @@ export function hashDaConfiguracao(regras: Regras): string {
     path.join(__dirname, '../lib/semLocalizacao.ts'),
     path.join(__dirname, '../config/crimeWeights.ts'),
     path.join(__dirname, '../config/pontosPadrao.ts'),
+    path.join(__dirname, '../config/locaisDeEvento.ts'),
     path.join(__dirname, '../config/naoGeocodificar.ts'),
     path.join(__dirname, './geocodificacao.ts'),
   ].map((f) => (fs.existsSync(f) ? fs.readFileSync(f, 'utf-8') : f));

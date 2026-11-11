@@ -2,7 +2,8 @@
  * Estágio C — consolidação. Soma as parciais, mede a curva de atraso do registro, define a cobertura de cada ano,
  * calcula a escala fixa (cortes dos anos completos juntos), os níveis do dia inteiro, por período e por hora,
  * confere as invariantes e grava em scripts/out/consolidado/<nome>/:
- *   hex_stats.ndjson.gz (uma linha por resolução × hexágono × ano com BO), level_breaks.json, datasets.json, relatorio.json
+ *   hex_stats.ndjson.gz (uma linha por resolução × hexágono × ano com BO), level_breaks.json, datasets.json,
+ *   event_venues.json (locais de evento por ano) e relatorio.json
  */
 import fs from 'fs';
 import path from 'path';
@@ -18,6 +19,7 @@ import {
   type Agregado,
   type Celula,
 } from '../lib/agregacao';
+import { DIA_DE_PICO, LOCAIS_DE_EVENTO, MANTER_LOCAL } from '../config/locaisDeEvento';
 import { readGeoSampa } from '../lib/city';
 import { PERIODOS } from '../lib/horario';
 import { carregarMunicipio } from '../lib/municipio';
@@ -68,6 +70,8 @@ export function somarCidade(a: CidadeAno, b: CidadeAno) {
   b.pontosPorPeriodo.forEach((n, i) => (a.pontosPorPeriodo[i] += n));
   for (const [m, lags] of Object.entries(b.atraso)) somarObj((a.atraso[m] ??= {}), lags);
   somarProfundo((a.geo ??= novaGeo()) as unknown as Record<string, unknown>, (b.geo ?? novaGeo()) as unknown as Record<string, unknown>);
+  somarObj((a.sigiloPorCategoria ??= {}), b.sigiloPorCategoria ?? {});
+  somarProfundo((a.eventos ??= {}) as Record<string, unknown>, (b.eventos ?? {}) as Record<string, unknown>);
 }
 
 /** a += b em objetos de contagem aninhados. */
@@ -204,6 +208,56 @@ export interface LinhaHex {
   total_by_month: number[];
 }
 
+/** Local de evento num ano (tabela event_venues). */
+export interface LocalEventoAno {
+  name: string;
+  lat: number;
+  lng: number;
+  radius_m: number;
+  year: number;
+  /** BOs com ponto final no raio, no ano */
+  bos: number;
+  median_per_day: number;
+  peak_threshold: number;
+  peak_days: number;
+  /** % dos BOs do ano que caíram nos dias de pico */
+  pct_in_peak_days: number;
+  /** maiores dias do ano ("AAAA-MM-DD": BOs) */
+  top_days: [string, number][];
+}
+
+/** Dias de pico de cada local por ano (regra em DIA_DE_PICO), contando todos os dias do ano até o último mês com dados. */
+export function locaisDeEvento(cidade: Record<string, CidadeAno>, ultimoMes: string): LocalEventoAno[] {
+  const out: LocalEventoAno[] = [];
+  for (const ano of Object.keys(cidade).map(Number).sort()) {
+    const ultimo = Number(ultimoMes.slice(0, 4)) === ano ? new Date(Date.UTC(ano, Number(ultimoMes.slice(5, 7)), 0)) : new Date(Date.UTC(ano, 11, 31));
+    const dias: string[] = [];
+    for (let d = new Date(Date.UTC(ano, 0, 1)); d <= ultimo; d.setUTCDate(d.getUTCDate() + 1)) dias.push(d.toISOString().slice(0, 10));
+    for (const v of LOCAIS_DE_EVENTO) {
+      const m = cidade[ano].eventos?.[v.nome] ?? {};
+      const serie = dias.map((d) => m[d] ?? 0).sort((a, b) => a - b);
+      const med = serie.length ? serie[serie.length >> 1] : 0;
+      const limite = Math.max(DIA_DE_PICO.minimo, DIA_DE_PICO.vezesMediana * med);
+      const bos = serie.reduce((a, b) => a + b, 0);
+      const picos = Object.entries(m).filter(([, n]) => n >= limite);
+      out.push({
+        name: v.nome,
+        lat: v.lat,
+        lng: v.lng,
+        radius_m: v.raioM,
+        year: ano,
+        bos,
+        median_per_day: med,
+        peak_threshold: limite,
+        peak_days: picos.length,
+        pct_in_peak_days: bos ? Number(((100 * picos.reduce((a, [, n]) => a + n, 0)) / bos).toFixed(1)) : 0,
+        top_days: Object.entries(m).sort((a, b) => b[1] - a[1]).slice(0, 5),
+      });
+    }
+  }
+  return out;
+}
+
 export interface Invariante {
   nome: string;
   ok: boolean;
@@ -221,6 +275,7 @@ export interface ResultadoConsolidacao {
   cortes: Record<number, number[]>;
   datasets: (Cobertura & Record<string, unknown>)[];
   curva: CurvaDeAtraso;
+  eventos: LocalEventoAno[];
   invariantes: Invariante[];
   relatorio: Record<string, unknown>;
   segundos: number;
@@ -315,6 +370,10 @@ export async function consolidar(
   const foraDaGrade: string[] = [];
   const desvioPeriodo: number[] = [];
   const desvioHora: number[] = [];
+  // Média dos 4 períodos (e das 24 horas) × dia inteiro, por resolução: desvio da densidade e diferença de nível.
+  const vsDia = new Map<number, { n: number; dp: number[]; dh: number[]; nivelP: number; nivelH: number; ate1P: number; ate1H: number }>(
+    RESOLUTIONS.map((r) => [r, { n: 0, dp: [], dh: [], nivelP: 0, nivelH: 0, ate1P: 0, ate1H: 0 }]),
+  );
   for (const [k, c] of agregado) {
     const { res, h3, ano } = lerChave(k);
     if (c.total === 0 && c.weight === 0) continue;
@@ -329,8 +388,20 @@ export async function consolidar(
     const dp = densidadesPorPeriodo(c.weightByPeriod, a, fator[ano].periodo, escalaHex);
     const dh = densidadesPorHora(c.weightByHour, a, fator[ano].hora, escalaHex);
     if (c.total > 0 && d > 0) {
-      desvioPeriodo.push(dp.reduce((x, y) => x + y, 0) / 4 / d - 1);
-      desvioHora.push(dh.reduce((x, y) => x + y, 0) / 24 / d - 1);
+      const ep = dp.reduce((x, y) => x + y, 0) / 4 / d - 1;
+      const eh = dh.reduce((x, y) => x + y, 0) / 24 / d - 1;
+      desvioPeriodo.push(ep);
+      desvioHora.push(eh);
+      const v = vsDia.get(res)!;
+      const lp = dp.map((x) => levelFor(x, br)).reduce((x, y) => x + y, 0) / 4 - level;
+      const lh = dh.map((x) => levelFor(x, br)).reduce((x, y) => x + y, 0) / 24 - level;
+      v.n++;
+      v.dp.push(ep);
+      v.dh.push(eh);
+      v.nivelP += lp;
+      v.nivelH += lh;
+      if (Math.abs(lp) <= 1) v.ate1P++;
+      if (Math.abs(lh) <= 1) v.ate1H++;
     }
     linhas.push({
       h3_index: h3,
@@ -483,6 +554,53 @@ export async function consolidar(
     add('paralelo = sequencial (partes reprocessadas em sequência)', iguais === amostra.length, `${iguais}/${amostra.length} partes idênticas`);
   }
 
+  const media = (xs: number[]) => xs.reduce((a, b) => a + b, 0) / Math.max(1, xs.length);
+  const periodosVsDia = Object.fromEntries(
+    [...vsDia].map(([res, v]) => [
+      res,
+      {
+        hexagonos_ano: v.n,
+        periodos: {
+          desvio_medio_densidade_pct: Number((100 * media(v.dp)).toFixed(2)),
+          mediana_abs_desvio_pct: Number((100 * mediana(v.dp.map(Math.abs))).toFixed(2)),
+          diferenca_media_de_nivel: Number((v.nivelP / Math.max(1, v.n)).toFixed(3)),
+          ate_1_nivel_pct: Number(((100 * v.ate1P) / Math.max(1, v.n)).toFixed(1)),
+        },
+        horas: {
+          desvio_medio_densidade_pct: Number((100 * media(v.dh)).toFixed(2)),
+          mediana_abs_desvio_pct: Number((100 * mediana(v.dh.map(Math.abs))).toFixed(2)),
+          diferenca_media_de_nivel: Number((v.nivelH / Math.max(1, v.n)).toFixed(3)),
+          ate_1_nivel_pct: Number(((100 * v.ate1H) / Math.max(1, v.n)).toFixed(1)),
+        },
+      },
+    ]),
+  );
+  const eventos = locaisDeEvento(cidade, curva.corte);
+  const resumoEventos = LOCAIS_DE_EVENTO.map((v) => {
+    const xs = eventos.filter((e) => e.name === v.nome);
+    const bos = xs.reduce((a, e) => a + e.bos, 0);
+    const emPico = xs.reduce((a, e) => a + (e.bos * e.pct_in_peak_days) / 100, 0);
+    const dias = xs.reduce((a, e) => a + e.peak_days, 0);
+    const pct = bos ? (100 * emPico) / bos : 0;
+    return { nome: v.nome, bos, dias_de_pico: dias, pct_em_dias_de_pico: Number(pct.toFixed(1)), fica: dias >= MANTER_LOCAL.minDias && pct >= MANTER_LOCAL.minPct };
+  });
+  const sigilo = Object.fromEntries(
+    anos.map((ano) => {
+      const c = cidade[ano];
+      const tot = Object.values(c.porCategoria).reduce((a, b) => a + (b ?? 0), 0);
+      const sg = Object.values(c.sigiloPorCategoria ?? {}).reduce((a, b) => a + (b ?? 0), 0);
+      return [
+        ano,
+        {
+          total_pct: Number(((100 * sg) / Math.max(1, tot)).toFixed(2)),
+          por_categoria: Object.fromEntries(
+            Object.entries(c.porCategoria).map(([cat, n]) => [cat, { bos: n, sigilo: c.sigiloPorCategoria?.[cat as keyof typeof c.porCategoria] ?? 0, pct: Number(((100 * (c.sigiloPorCategoria?.[cat as keyof typeof c.porCategoria] ?? 0)) / Math.max(1, n ?? 0)).toFixed(1)) }]),
+          ),
+        },
+      ];
+    }),
+  );
+
   const datasets = anos.map((ano) => {
     const c = cidade[ano];
     const cv = cob.get(ano)!;
@@ -512,7 +630,10 @@ export async function consolidar(
     cortes: escala === 'fixa' ? cortesFixos : Object.fromEntries(cortesPorAno),
     quantis: QUANTIS_DOS_CORTES,
     hexagonosPorNivel: niveis,
-    cidade: Object.fromEntries(anos.map((a) => [a, { ...cidade[a], atraso: undefined }])),
+    periodosVsDia,
+    eventos: { regra: DIA_DE_PICO, manter: MANTER_LOCAL, resumo: resumoEventos },
+    sigilo,
+    cidade: Object.fromEntries(anos.map((a) => [a, { ...cidade[a], atraso: undefined, eventos: undefined }])),
     invariantes: inv,
   };
   const pasta = path.join(outDir, 'consolidado', opcoes.nome);
@@ -521,9 +642,10 @@ export async function consolidar(
     fs.writeFileSync(path.join(pasta, 'hex_stats.ndjson.gz'), zlib.gzipSync(linhas.map((l) => JSON.stringify(l)).join('\n')));
     fs.writeFileSync(path.join(pasta, 'level_breaks.json'), JSON.stringify(cortesFixos, null, 2));
     fs.writeFileSync(path.join(pasta, 'datasets.json'), JSON.stringify(datasets, null, 2));
+    fs.writeFileSync(path.join(pasta, 'event_venues.json'), JSON.stringify(eventos, null, 2));
     fs.writeFileSync(path.join(pasta, 'relatorio.json'), JSON.stringify(relatorio, null, 2));
   }
-  return { nome: opcoes.nome, pasta, linhas, cortes: cortesFixos, datasets, curva, invariantes: inv, relatorio, segundos: Math.round((Date.now() - inicio) / 1000) };
+  return { nome: opcoes.nome, pasta, linhas, cortes: cortesFixos, datasets, curva, eventos, invariantes: inv, relatorio, segundos: Math.round((Date.now() - inicio) / 1000) };
 }
 
 

@@ -19,7 +19,7 @@ async function main() {
   console.log('B. Processamento');
   const proc = await processarTudo(REGRAS_PADRAO, opcoesDoProcessamento());
   console.log('C. Consolidação');
-  const c = await consolidar(proc, REGRAS_PADRAO, { nome: 'linha_de_base', escala: 'fixa', conferirSequencial: 2 });
+  const c = await consolidar(proc, REGRAS_PADRAO, { nome: 'final', escala: 'fixa', conferirSequencial: 2 });
   imprimirConsolidacao(c, proc);
   if (c.invariantes.some((i) => !i.ok)) throw new Error('Há invariantes falhando: nada será gravado.');
   if (arg('gravar') === 'true')
