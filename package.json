@@ -12,6 +12,7 @@
     "data:import-crimes": "npm --prefix scripts run import:crimes --",
     "mobile:go": "npm --prefix apps/mobile run go",
     "data:import-postos": "npm --prefix scripts run import:postos --",
+    "data:verificar": "npm --prefix scripts run verificar",
     "data:diagnostico": "npm --prefix scripts run diagnostico --",
     "test": "npm --prefix scripts test",
     "data:limpar": "npm --prefix scripts run limpar --",

@@ -16,7 +16,8 @@
     "comparar-banco": "tsx --env-file-if-exists=.env compararBanco.ts",
     "indice-cnefe": "tsx --env-file-if-exists=.env indiceCnefe.ts",
     "geocodificar": "tsx --env-file-if-exists=.env geocodificar.ts",
-    "comparar-geocodificacao": "tsx --env-file-if-exists=.env compararGeocodificacao.ts"
+    "comparar-geocodificacao": "tsx --env-file-if-exists=.env compararGeocodificacao.ts",
+    "verificar": "tsx --env-file-if-exists=.env verificar.ts"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.119.0",
