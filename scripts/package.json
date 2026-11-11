@@ -22,7 +22,8 @@
     "gravar": "tsx --env-file-if-exists=.env gravar.ts",
     "conferir-banco": "tsx --env-file-if-exists=.env conferirBanco.ts",
     "backup": "tsx --env-file-if-exists=.env backup.ts",
-    "restaurar-backup": "tsx --env-file-if-exists=.env restaurarBackup.ts"
+    "restaurar-backup": "tsx --env-file-if-exists=.env restaurarBackup.ts",
+    "conferir-publico": "tsx conferirPublico.ts"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.119.0",
